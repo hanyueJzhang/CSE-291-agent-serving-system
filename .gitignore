@@ -1,0 +1,24 @@
+# Models (GGUF files are GBs; setup/download_model.sh fetches them)
+models/*
+!models/.gitkeep
+*.gguf
+
+# llama.cpp checkout/build (pinned via setup/build_llama.sh)
+third_party/
+
+# Large/raw run outputs: commit summaries, keep bulky logs local
+results/**/raw/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
