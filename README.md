@@ -33,6 +33,8 @@ Prereqs: NVIDIA driver on Windows (do not install a Linux driver inside WSL), th
 
 ```bash
 git clone <this repo> && cd <repo>
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 bash setup/build_llama.sh          # add --cpu for a CPU-only build
 bash setup/download_model.sh
 bash setup/start_server.sh         # override e.g. CTX=16384 PARALLEL=8 bash setup/start_server.sh
@@ -42,6 +44,14 @@ curl localhost:8080/health
 curl localhost:8080/v1/chat/completions -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"hi"}]}'
 ```
+
+## Keeping environments consistent
+
+Only the machine that produces reported numbers must match exactly; dev machines just need to run the code.
+
+- **Pinned in git:** llama.cpp commit, model file + quant, server defaults (`setup/config.env`), Python deps (`requirements.txt`, later an exact `requirements.lock`).
+- **Recorded, not pinned:** OS, NVIDIA driver, CUDA toolkit, GPU, RAM. Run `bash setup/check_env.sh` and keep its output with each result set.
+- Changing anything pinned requires a PR the whole team agrees on, since it invalidates earlier results.
 
 ## Reproducing results
 

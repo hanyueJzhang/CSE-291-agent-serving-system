@@ -1,0 +1,8 @@
+# Python deps for runner / scheduler / analysis. Pin exact versions once the
+# first run works:  pip freeze > requirements.lock  (and commit it)
+aiohttp>=3.9
+pandas>=2.0
+matplotlib>=3.8
+pynvml>=11.5
+psutil>=5.9
+huggingface_hub[cli]>=0.23
