@@ -1,0 +1,33 @@
+{
+  "_comment": "DRAFT workload schema. One file = one workload mix. Times in seconds, lengths in tokens.",
+  "name": "example_mix",
+  "seed": 42,
+  "arrival": { "process": "poisson", "rate_per_s": 0.5, "num_tasks": 50 },
+  "task_types": [
+    {
+      "type": "short_chat",
+      "weight": 0.4,
+      "steps": [
+        { "kind": "llm", "prompt_tokens": 256, "max_output_tokens": 64 }
+      ]
+    },
+    {
+      "type": "long_context_qa",
+      "weight": 0.3,
+      "steps": [
+        { "kind": "llm", "prompt_tokens": 3000, "max_output_tokens": 128 }
+      ]
+    },
+    {
+      "type": "agent_3step",
+      "weight": 0.3,
+      "steps": [
+        { "kind": "llm",  "prompt_tokens": 512, "max_output_tokens": 128 },
+        { "kind": "tool", "delay_s": { "dist": "uniform", "min": 0.5, "max": 2.0 } },
+        { "kind": "llm",  "append_tokens": 400, "max_output_tokens": 128, "carry_context": true },
+        { "kind": "tool", "delay_s": { "dist": "fixed", "value": 1.0 } },
+        { "kind": "llm",  "append_tokens": 400, "max_output_tokens": 256, "carry_context": true }
+      ]
+    }
+  ]
+}
