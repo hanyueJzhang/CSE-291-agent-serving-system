@@ -20,5 +20,6 @@ fi
 CUDA_FLAG="-DGGML_CUDA=ON"
 [ "${1:-}" = "--cpu" ] && CUDA_FLAG=""
 cmake -B build $CUDA_FLAG
-cmake --build build --config Release -j
+# Cap parallel jobs: a bare -j is unbounded and nvcc can exhaust WSL memory.
+cmake --build build --config Release -j "$(nproc)"
 echo "Built llama.cpp at commit $(git rev-parse HEAD)"
