@@ -118,5 +118,19 @@
         ]
       }
     ]
+  },
+  "three_short_tasks": {
+    "name": "three_short_tasks",
+    "seed": 13,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 3 },
+    "task_types": [
+      {
+        "type": "short_chat",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 2 }
+        ]
+      }
+    ]
   }
 }
