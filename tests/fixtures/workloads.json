@@ -1,0 +1,122 @@
+{
+  "one_short_task": {
+    "name": "one_short_task",
+    "seed": 1,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 1 },
+    "task_types": [
+      {
+        "type": "short_chat",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 64 }
+        ]
+      }
+    ]
+  },
+  "one_agent_task": {
+    "name": "one_agent_task",
+    "seed": 7,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 1 },
+    "task_types": [
+      {
+        "type": "agent_2request",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 64 },
+          { "kind": "tool", "delay_s": { "dist": "fixed", "value": 0.25 } },
+          {
+            "kind": "llm",
+            "append_tokens": 2,
+            "max_output_tokens": 64,
+            "carry_context": true
+          }
+        ]
+      }
+    ]
+  },
+  "mixed_concurrent_tasks": {
+    "name": "mixed_concurrent_tasks",
+    "seed": 9,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 2 },
+    "task_types": [
+      {
+        "type": "agent_2request",
+        "weight": 0.5,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 32 },
+          { "kind": "tool", "delay_s": { "dist": "fixed", "value": 1.0 } },
+          {
+            "kind": "llm",
+            "append_tokens": 2,
+            "max_output_tokens": 32,
+            "carry_context": true
+          }
+        ]
+      },
+      {
+        "type": "short_chat",
+        "weight": 0.5,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 32 }
+        ]
+      }
+    ]
+  },
+  "two_agent_tasks": {
+    "name": "two_agent_tasks",
+    "seed": 3,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 2 },
+    "task_types": [
+      {
+        "type": "agent_2request",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 32 },
+          { "kind": "tool", "delay_s": { "dist": "fixed", "value": 0.0 } },
+          {
+            "kind": "llm",
+            "append_tokens": 2,
+            "max_output_tokens": 32,
+            "carry_context": true
+          }
+        ]
+      }
+    ]
+  },
+  "generator_features": {
+    "name": "generator_features",
+    "seed": 7,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 1 },
+    "task_types": [
+      {
+        "type": "agent_2request",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 2 },
+          { "kind": "tool", "delay_s": { "dist": "uniform", "min": 0.5, "max": 2.0 } },
+          {
+            "kind": "llm",
+            "append_tokens": 2,
+            "max_output_tokens": 2,
+            "carry_context": true
+          },
+          { "kind": "tool", "delay_s": { "dist": "fixed", "value": 1.0 } }
+        ]
+      }
+    ]
+  },
+  "two_short_tasks": {
+    "name": "two_short_tasks",
+    "seed": 11,
+    "arrival": { "process": "poisson", "rate_per_s": 1.0, "num_tasks": 2 },
+    "task_types": [
+      {
+        "type": "short_chat",
+        "weight": 1.0,
+        "steps": [
+          { "kind": "llm", "prompt_tokens": 3, "max_output_tokens": 2 }
+        ]
+      }
+    ]
+  }
+}

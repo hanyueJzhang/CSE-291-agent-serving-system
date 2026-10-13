@@ -1,25 +1,24 @@
 import asyncio
+from pathlib import Path
 import unittest
 
 from tests.fakes import FakeModelClient, ImmediateScheduler
+from workload import generator as workload_generator
 from workload import runner as workload_runner
 from workload.runner import run_task
 
 
+TEST_WORKLOADS = Path(__file__).resolve().parent / "fixtures" / "workloads.json"
+
+
+def generate_test_tasks(name):
+    workloads = workload_generator.load_workload(TEST_WORKLOADS)
+    return workload_generator.generate_tasks(workloads[name])
+
+
 class RunTaskTests(unittest.IsolatedAsyncioTestCase):
     async def test_runs_one_short_task(self):
-        task = {
-            "id": "task-1",
-            "type": "short_chat",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "Hello",
-                    "prompt_tokens": 256,
-                    "max_output_tokens": 64,
-                }
-            ],
-        }
+        task = generate_test_tasks("one_short_task")[0]
         scheduler = ImmediateScheduler()
         model_client = FakeModelClient()
 
@@ -31,41 +30,18 @@ class RunTaskTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(model_client.calls[0]["max_tokens"], 64)
         self.assertEqual(
             model_client.calls[0]["messages"],
-            [{"role": "user", "content": "Hello"}],
+            [{"role": "user", "content": task["steps"][0]["prompt"]}],
         )
 
         request = result["requests"][0]
-        self.assertEqual(request.task_id, "task-1")
+        self.assertEqual(request.task_id, "task-0000")
         self.assertIsNotNone(request.t_arrive)
         self.assertEqual(request.t_dispatch, request.t_arrive)
         self.assertIsNotNone(request.t_finish)
         self.assertEqual(scheduler.num_running, 0)
 
     async def test_runs_tool_between_llm_steps_and_retains_context(self):
-        task = {
-            "id": "task-2",
-            "type": "agent_2request",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "Find information about topic X.",
-                    "prompt_tokens": 128,
-                    "max_output_tokens": 64,
-                },
-                {
-                    "kind": "tool",
-                    "delay_s": {"dist": "fixed", "value": 0.25},
-                    "result": "Simulated tool result about topic X.",
-                },
-                {
-                    "kind": "llm",
-                    "prompt": "Summarize the tool result.",
-                    "prompt_tokens": 256,
-                    "max_output_tokens": 64,
-                    "carry_context": True,
-                },
-            ],
-        }
+        task = generate_test_tasks("one_agent_task")[0]
         scheduler = ImmediateScheduler()
         tool_delays = []
         running_counts_during_tool = []
@@ -97,58 +73,32 @@ class RunTaskTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             model_client.calls[1]["messages"],
             [
-                {"role": "user", "content": "Find information about topic X."},
+                {"role": "user", "content": task["steps"][0]["prompt"]},
                 {"role": "assistant", "content": "Fake model response"},
-                {"role": "tool", "content": "Simulated tool result about topic X."},
-                {"role": "user", "content": "Summarize the tool result."},
+                {"role": "tool", "content": task["steps"][1]["result"]},
+                {"role": "user", "content": task["steps"][2]["prompt"]},
             ],
         )
         self.assertEqual(result["responses"], ["Fake model response"] * 2)
         self.assertEqual(scheduler.num_running, 0)
 
     async def test_another_agent_progresses_during_tool_wait(self):
-        task_a = {
-            "id": "task-a",
-            "type": "agent_2request",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "A first prompt",
-                    "prompt_tokens": 64,
-                    "max_output_tokens": 32,
-                },
-                {
-                    "kind": "tool",
-                    "delay_s": {"dist": "fixed", "value": 1.0},
-                    "result": "A tool result",
-                },
-                {
-                    "kind": "llm",
-                    "prompt": "A second prompt",
-                    "prompt_tokens": 128,
-                    "max_output_tokens": 32,
-                    "carry_context": True,
-                },
-            ],
-        }
-        task_b = {
-            "id": "task-b",
-            "type": "short_chat",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "B prompt",
-                    "prompt_tokens": 64,
-                    "max_output_tokens": 32,
-                }
-            ],
-        }
+        tasks = generate_test_tasks("mixed_concurrent_tasks")
+        task_a, task_b = tasks
+        self.assertEqual([task["type"] for task in tasks], ["agent_2request", "short_chat"])
+
+        a_first_prompt = task_a["steps"][0]["prompt"]
+        a_second_prompt = task_a["steps"][2]["prompt"]
+        b_prompt = task_b["steps"][0]["prompt"]
+        arrival_delays = {task["arrival_s"] for task in tasks}
         scheduler = ImmediateScheduler()
         a_is_waiting = asyncio.Event()
         b_has_progressed = asyncio.Event()
         events = []
 
         async def controlled_sleep(delay):
+            if delay in arrival_delays:
+                return
             events.append("A:tool-start")
             a_is_waiting.set()
             await b_has_progressed.wait()
@@ -157,19 +107,19 @@ class RunTaskTests(unittest.IsolatedAsyncioTestCase):
         class CoordinatedModelClient(FakeModelClient):
             async def generate(self, messages, max_tokens):
                 latest_prompt = messages[-1]["content"]
-                if latest_prompt == "A first prompt":
+                if latest_prompt == a_first_prompt:
                     events.append("A:model-1")
-                elif latest_prompt == "B prompt":
+                elif latest_prompt == b_prompt:
                     await a_is_waiting.wait()
                     events.append("B:model-1")
                     b_has_progressed.set()
-                elif latest_prompt == "A second prompt":
+                elif latest_prompt == a_second_prompt:
                     events.append("A:model-2")
                 return await super().generate(messages, max_tokens)
 
         results = await asyncio.wait_for(
-            workload_runner.run_tasks(
-                [task_a, task_b],
+            workload_runner.run_workload(
+                tasks,
                 scheduler,
                 CoordinatedModelClient(),
                 sleep=controlled_sleep,
@@ -187,66 +137,23 @@ class RunTaskTests(unittest.IsolatedAsyncioTestCase):
                 "A:model-2",
             ],
         )
-        self.assertEqual([result["task_id"] for result in results], ["task-a", "task-b"])
+        self.assertEqual(
+            [result["task_id"] for result in results],
+            ["task-0000", "task-0001"],
+        )
         self.assertEqual(scheduler.num_running, 0)
 
     async def test_concurrent_agents_keep_separate_contexts(self):
-        task_a = {
-            "id": "task-a",
-            "type": "agent_2request",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "task-a first prompt",
-                    "prompt_tokens": 64,
-                    "max_output_tokens": 32,
-                },
-                {
-                    "kind": "tool",
-                    "delay_s": {"dist": "fixed", "value": 0.0},
-                    "result": "task-a tool result",
-                },
-                {
-                    "kind": "llm",
-                    "prompt": "task-a second prompt",
-                    "prompt_tokens": 128,
-                    "max_output_tokens": 32,
-                    "carry_context": True,
-                },
-            ],
-        }
-        task_b = {
-            "id": "task-b",
-            "type": "agent_2request",
-            "steps": [
-                {
-                    "kind": "llm",
-                    "prompt": "task-b first prompt",
-                    "prompt_tokens": 64,
-                    "max_output_tokens": 32,
-                },
-                {
-                    "kind": "tool",
-                    "delay_s": {"dist": "fixed", "value": 0.0},
-                    "result": "task-b tool result",
-                },
-                {
-                    "kind": "llm",
-                    "prompt": "task-b second prompt",
-                    "prompt_tokens": 128,
-                    "max_output_tokens": 32,
-                    "carry_context": True,
-                },
-            ],
-        }
+        tasks = generate_test_tasks("two_agent_tasks")
+        task_a, task_b = tasks
 
         async def yield_to_other_agent(delay):
             await asyncio.sleep(0)
 
         scheduler = ImmediateScheduler()
         model_client = FakeModelClient()
-        results = await workload_runner.run_tasks(
-            [task_a, task_b],
+        results = await workload_runner.run_workload(
+            tasks,
             scheduler,
             model_client,
             sleep=yield_to_other_agent,
@@ -257,24 +164,27 @@ class RunTaskTests(unittest.IsolatedAsyncioTestCase):
             for call in model_client.calls
         }
         self.assertEqual(
-            calls_by_prompt["task-a second prompt"],
+            calls_by_prompt[task_a["steps"][2]["prompt"]],
             [
-                {"role": "user", "content": "task-a first prompt"},
+                {"role": "user", "content": task_a["steps"][0]["prompt"]},
                 {"role": "assistant", "content": "Fake model response"},
-                {"role": "tool", "content": "task-a tool result"},
-                {"role": "user", "content": "task-a second prompt"},
+                {"role": "tool", "content": task_a["steps"][1]["result"]},
+                {"role": "user", "content": task_a["steps"][2]["prompt"]},
             ],
         )
         self.assertEqual(
-            calls_by_prompt["task-b second prompt"],
+            calls_by_prompt[task_b["steps"][2]["prompt"]],
             [
-                {"role": "user", "content": "task-b first prompt"},
+                {"role": "user", "content": task_b["steps"][0]["prompt"]},
                 {"role": "assistant", "content": "Fake model response"},
-                {"role": "tool", "content": "task-b tool result"},
-                {"role": "user", "content": "task-b second prompt"},
+                {"role": "tool", "content": task_b["steps"][1]["result"]},
+                {"role": "user", "content": task_b["steps"][2]["prompt"]},
             ],
         )
-        self.assertEqual([result["task_id"] for result in results], ["task-a", "task-b"])
+        self.assertEqual(
+            [result["task_id"] for result in results],
+            ["task-0000", "task-0001"],
+        )
         self.assertEqual(scheduler.num_running, 0)
 
 

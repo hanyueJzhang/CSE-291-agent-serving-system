@@ -29,10 +29,7 @@ async def run_task(
         kind = step["kind"]
 
         if kind == "tool":
-            delay = step["delay_s"]
-            if delay["dist"] != "fixed":
-                raise ValueError(f"unsupported tool delay distribution: {delay['dist']!r}")
-            await sleep(delay["value"])
+            await sleep(step["delay_s"])
             context.append(
                 {
                     "role": "tool",
@@ -75,17 +72,18 @@ async def run_task(
     }
 
 
-async def run_tasks(
+async def run_workload(
     tasks: list[dict[str, Any]],
     scheduler: Any,
     model_client: Any,
     *,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> list[dict[str, Any]]:
-    """Run multiple agent tasks concurrently."""
-    return await asyncio.gather(
-        *(
-            run_task(task, scheduler, model_client, sleep=sleep)
-            for task in tasks
-        )
-    )
+    """Run concrete tasks at their generated arrival times."""
+
+    async def run_at_arrival(task: dict[str, Any]) -> dict[str, Any]:
+        if task["arrival_s"] > 0:
+            await sleep(task["arrival_s"])
+        return await run_task(task, scheduler, model_client, sleep=sleep)
+
+    return await asyncio.gather(*(run_at_arrival(task) for task in tasks))
