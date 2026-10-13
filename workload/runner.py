@@ -73,3 +73,19 @@ async def run_task(
         "context": context,
         "requests": requests,
     }
+
+
+async def run_tasks(
+    tasks: list[dict[str, Any]],
+    scheduler: Any,
+    model_client: Any,
+    *,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> list[dict[str, Any]]:
+    """Run multiple agent tasks concurrently."""
+    return await asyncio.gather(
+        *(
+            run_task(task, scheduler, model_client, sleep=sleep)
+            for task in tasks
+        )
+    )
