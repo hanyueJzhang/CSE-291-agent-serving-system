@@ -2,24 +2,50 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from scheduler import Request
 
 
-async def run_task(task: dict[str, Any], scheduler: Any, model_client: Any) -> dict[str, Any]:
+async def run_task(
+    task: dict[str, Any],
+    scheduler: Any,
+    model_client: Any,
+    *,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> dict[str, Any]:
     """Run one task and return its responses and scheduler requests.
 
-    This first milestone supports a task containing LLM steps. Tool steps and
-    workload-file generation will be added in later milestones.
+    LLM steps use scheduler admission. Tool steps run after admission has been
+    released, so another agent can use the model while this task waits.
     """
     context: list[dict[str, str]] = []
     responses: list[str] = []
     requests: list[Request] = []
 
     for step_idx, step in enumerate(task["steps"]):
-        if step["kind"] != "llm":
-            raise ValueError(f"unsupported step kind: {step['kind']!r}")
+        kind = step["kind"]
+
+        if kind == "tool":
+            delay = step["delay_s"]
+            if delay["dist"] != "fixed":
+                raise ValueError(f"unsupported tool delay distribution: {delay['dist']!r}")
+            await sleep(delay["value"])
+            context.append(
+                {
+                    "role": "tool",
+                    "content": step.get("result", "Simulated tool result"),
+                }
+            )
+            continue
+
+        if kind != "llm":
+            raise ValueError(f"unsupported step kind: {kind!r}")
+
+        if context and not step.get("carry_context", False):
+            context = []
 
         context.append({"role": "user", "content": step["prompt"]})
         request = Request(
