@@ -10,8 +10,8 @@ Course project (Option 1). We run a local LLM runtime (llama.cpp `llama-server`)
 | item | value |
 |---|---|
 | llama.cpp commit | `972b5fc` (see `setup/config.env`) |
-| model | TODO (draft: Qwen2.5-3B-Instruct) |
-| quantization | TODO (draft: Q4_K_M) |
+| model | Llama-3.1-8B-Instruct (GGUF from `bartowski/Meta-Llama-3.1-8B-Instruct-GGUF`) |
+| quantization | Q4_K_M |
 | run machine | Desktop, RTX 3080 (10 GB), Ryzen 7 7700X, 32 GB RAM, Win11 + WSL2 Ubuntu 24.04, CUDA 13.3 |
 
 ## Layout
