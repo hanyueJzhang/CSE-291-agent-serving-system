@@ -1,0 +1,17 @@
+# Output of `bash setup/check_env.sh` on the experiment server, 2026-10-14
+date:            2026-10-14T00:34:34-07:00
+repo_commit:     da7578c
+os:              Ubuntu 24.04.5 LTS / kernel 6.18.54.1-microsoft-standard-WSL2
+wsl:             yes
+cpu:             AMD Ryzen 7 7700X 8-Core Processor
+ram_total:       15 GB
+gpu:             NVIDIA GeForce RTX 3080, 10240 MiB, 617.42
+cuda_toolkit:    release 13.3
+python:          Python 3.12.3
+llama_cpp:       972b5fcc1 (pinned: 972b5fcc19670e597f8de9bf5cacfb85752a5fff)
+model:           Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf sha256=7b064f5842bf9532
+server_defaults: CTX=8192 PARALLEL=4 NGL=99
+
+# Observed at first server start (setup/start_server.sh defaults, no requests in flight):
+# nvidia-smi memory used: 5800 MiB / 10240 MiB
+# llama-server log: n_slots = 4, n_ctx_slot = 2048
