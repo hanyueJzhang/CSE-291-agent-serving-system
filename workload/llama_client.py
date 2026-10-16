@@ -49,6 +49,7 @@ class Completion:
     output_tokens: int | None = None
     prefill_ms: float | None = None
     decode_ms: float | None = None
+    slot_id: int | None = None    # only if the server reports id_slot (the chat endpoint does not, at the pinned commit)
 
     @property
     def ttft_s(self) -> float | None:
@@ -208,6 +209,9 @@ class LlamaClient:
                 parts.append(content)
             if choice.get("finish_reason"):
                 result.finish_reason = choice["finish_reason"]
+
+        if event.get("id_slot") is not None:
+            result.slot_id = event["id_slot"]
 
         usage = event.get("usage")
         if usage:

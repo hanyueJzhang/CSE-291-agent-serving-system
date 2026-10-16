@@ -1,102 +1,20 @@
-import asyncio
-import json
 import socket
 import unittest
 
 from aiohttp import web
-from aiohttp.test_utils import TestServer
 
+from tests.fake_llama_server import NORMAL_STREAM, USAGE_CHUNK, FakeLlamaServer, chunk, sse
 from workload.llama_client import LlamaClient, LlamaClientError
-
-
-def sse(event):
-    return f"data: {json.dumps(event)}\n\n".encode()
-
-
-def chunk(content=None, finish_reason=None):
-    delta = {"content": content} if content is not None else {}
-    return {
-        "object": "chat.completion.chunk",
-        "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
-    }
-
-
-# Same shape as the pinned llama-server's stream with include_usage.
-USAGE_CHUNK = {
-    "object": "chat.completion.chunk",
-    "choices": [],
-    "usage": {
-        "completion_tokens": 2,
-        "prompt_tokens": 30,
-        "total_tokens": 32,
-        "prompt_tokens_details": {"cached_tokens": 12},
-    },
-    "timings": {
-        "cache_n": 12,
-        "prompt_n": 18,
-        "prompt_ms": 45.5,
-        "predicted_n": 2,
-        "predicted_ms": 20.25,
-    },
-}
-
-NORMAL_STREAM = [
-    sse(chunk("Hel")),
-    sse(chunk("lo")),
-    sse(chunk(finish_reason="length")),
-    sse(USAGE_CHUNK),
-    b"data: [DONE]\n\n",
-]
-
-
-class FakeLlamaServer:
-    """Minimal llama-server stand-in. Set `handler` per test."""
-
-    def __init__(self):
-        self.bodies = []
-        self.handler = self.stream(NORMAL_STREAM)
-        app = web.Application()
-        app.router.add_post("/v1/chat/completions", self._chat)
-        app.router.add_get("/health", self._health)
-        self.health_statuses = [200]
-        self.server = TestServer(app)
-
-    async def _chat(self, request):
-        self.bodies.append(await request.json())
-        return await self.handler(request)
-
-    async def _health(self, request):
-        status = self.health_statuses.pop(0) if len(self.health_statuses) > 1 else self.health_statuses[0]
-        return web.json_response({"status": "ok" if status == 200 else "loading"}, status=status)
-
-    @staticmethod
-    def stream(pieces, delay_s=0.0):
-        async def handler(request):
-            resp = web.StreamResponse(headers={"Content-Type": "text/event-stream"})
-            await resp.prepare(request)
-            for piece in pieces:
-                if delay_s:
-                    await asyncio.sleep(delay_s)
-                await resp.write(piece)
-            await resp.write_eof()
-            return resp
-
-        return handler
-
-    @property
-    def url(self):
-        return str(self.server.make_url("")).rstrip("/")
 
 
 class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.fake = FakeLlamaServer()
-        await self.fake.server.start_server()
+        self.fake = await FakeLlamaServer().start()
         self.client = LlamaClient(self.fake.url, timeout_s=2.0)
 
     async def asyncTearDown(self):
         await self.client.close()
-        await self.fake.server.close()
+        await self.fake.close()
 
     async def test_streams_text_and_reads_server_metrics(self):
         messages = [{"role": "user", "content": "hi"}]
@@ -110,6 +28,7 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.output_tokens, 2)
         self.assertEqual(result.prefill_ms, 45.5)
         self.assertEqual(result.decode_ms, 20.25)
+        self.assertIsNone(result.slot_id)  # the pinned server's chat stream has no id_slot
         self.assertLessEqual(result.t_start, result.t_first_token)
         self.assertLessEqual(result.t_first_token, result.t_finish)
 
@@ -136,6 +55,14 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.text, "Hello")
         self.assertEqual(result.prompt_tokens, 30)
+
+    async def test_reads_slot_id_if_reported(self):
+        final = dict(USAGE_CHUNK, id_slot=3)
+        self.fake.handler = FakeLlamaServer.stream([sse(chunk("Hi", finish_reason="length")), sse(final)])
+
+        result = await self.client.complete([{"role": "user", "content": "hi"}], max_tokens=2)
+
+        self.assertEqual(result.slot_id, 3)
 
     async def test_falls_back_to_timings_without_usage(self):
         timings_only = {k: v for k, v in USAGE_CHUNK.items() if k != "usage"}
