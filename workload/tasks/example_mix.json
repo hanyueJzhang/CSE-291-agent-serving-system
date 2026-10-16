@@ -15,7 +15,7 @@
       "type": "long_context_qa",
       "weight": 0.3,
       "steps": [
-        { "kind": "llm", "prompt_tokens": 3000, "max_output_tokens": 128 }
+        { "kind": "llm", "prompt_tokens": 1500, "max_output_tokens": 128 }
       ]
     },
     {
@@ -24,9 +24,9 @@
       "steps": [
         { "kind": "llm",  "prompt_tokens": 512, "max_output_tokens": 128 },
         { "kind": "tool", "delay_s": { "dist": "uniform", "min": 0.5, "max": 2.0 } },
-        { "kind": "llm",  "append_tokens": 400, "max_output_tokens": 128, "carry_context": true },
+        { "kind": "llm",  "append_tokens": 300, "max_output_tokens": 128, "carry_context": true },
         { "kind": "tool", "delay_s": { "dist": "fixed", "value": 1.0 } },
-        { "kind": "llm",  "append_tokens": 400, "max_output_tokens": 256, "carry_context": true }
+        { "kind": "llm",  "append_tokens": 300, "max_output_tokens": 256, "carry_context": true }
       ]
     }
   ]
