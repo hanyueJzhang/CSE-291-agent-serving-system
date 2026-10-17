@@ -106,7 +106,7 @@ class MemorySampler:
         if self.server_process is None:
             self.notes.append("llama-server process not found locally; server_rss_mb is blank")
         if self.base_url:
-            self._session = aiohttp.ClientSession()
+            self._session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(force_close=True))
         self._task = asyncio.create_task(self._loop())
 
     async def stop(self) -> list[dict[str, Any]]:

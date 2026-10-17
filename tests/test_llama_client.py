@@ -1,3 +1,4 @@
+import asyncio
 import socket
 import unittest
 
@@ -63,6 +64,40 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         result = await self.client.complete([{"role": "user", "content": "hi"}], max_tokens=2)
 
         self.assertEqual(result.slot_id, 3)
+
+    async def test_back_to_back_requests_when_server_drops_connections(self):
+        # llama-server closes a connection after one streamed response without
+        # sending "Connection: close". A client that reuses the pooled connection
+        # then fails instantly with ServerDisconnectedError (seen on the 3080).
+        body = b"".join(NORMAL_STREAM)
+        response = (
+            b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+        )
+
+        async def one_request_per_connection(reader, writer):
+            await reader.readuntil(b"\r\n\r\n")
+            writer.write(response)
+            await writer.drain()
+            try:
+                # A second request on this connection gets no answer: just close.
+                await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=1)
+            except (asyncio.IncompleteReadError, asyncio.TimeoutError, ConnectionError):
+                pass
+            writer.close()
+
+        server = await asyncio.start_server(one_request_per_connection, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        client = LlamaClient(f"http://127.0.0.1:{port}")
+        messages = [{"role": "user", "content": "hi"}]
+        try:
+            results = [await client.complete(messages, max_tokens=2) for _ in range(3)]
+        finally:
+            await client.close()
+            server.close()
+            await server.wait_closed()
+
+        self.assertEqual([r.status for r in results], ["ok", "ok", "ok"], [r.error for r in results])
 
     async def test_falls_back_to_timings_without_usage(self):
         timings_only = {k: v for k, v in USAGE_CHUNK.items() if k != "usage"}

@@ -111,7 +111,8 @@ class LlamaClient:
         if self._session is None:
             # No pool cap: the scheduler decides how many requests are in flight.
             # No session-wide timeout either: complete() enforces timeout_s per request.
-            connector = aiohttp.TCPConnector(limit=0)
+            # force_close: a new connection per request.
+            connector = aiohttp.TCPConnector(limit=0, force_close=True)
             self._session = aiohttp.ClientSession(
                 connector=connector, timeout=aiohttp.ClientTimeout(total=None)
             )
