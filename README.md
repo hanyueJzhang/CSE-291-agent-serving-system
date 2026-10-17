@@ -43,7 +43,6 @@ bash setup/start_server.sh         # override e.g. CTX=16384 PARALLEL=8 bash set
 curl localhost:8080/health
 curl localhost:8080/v1/chat/completions -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"hi"}]}'
-python -m scripts.smoke_llama_client   # our client against the running server (sends 3 requests, never starts/stops it)
 ```
 
 ## Keeping environments consistent

@@ -29,7 +29,6 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.output_tokens, 2)
         self.assertEqual(result.prefill_ms, 45.5)
         self.assertEqual(result.decode_ms, 20.25)
-        self.assertIsNone(result.slot_id)  # the pinned server's chat stream has no id_slot
         self.assertLessEqual(result.t_start, result.t_first_token)
         self.assertLessEqual(result.t_first_token, result.t_finish)
 
@@ -56,14 +55,6 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.text, "Hello")
         self.assertEqual(result.prompt_tokens, 30)
-
-    async def test_reads_slot_id_if_reported(self):
-        final = dict(USAGE_CHUNK, id_slot=3)
-        self.fake.handler = FakeLlamaServer.stream([sse(chunk("Hi", finish_reason="length")), sse(final)])
-
-        result = await self.client.complete([{"role": "user", "content": "hi"}], max_tokens=2)
-
-        self.assertEqual(result.slot_id, 3)
 
     async def test_back_to_back_requests_when_server_drops_connections(self):
         # llama-server closes a connection after one streamed response without

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 REQUEST_COLUMNS = [
-    "run_id", "task_id", "step_idx", "slot_id",
+    "run_id", "task_id", "step_idx",
     "t_arrive", "t_dispatch", "t_first_token", "t_finish",
     "prompt_tokens", "cached_tokens", "output_tokens",
     "prefill_ms", "decode_ms",
@@ -36,7 +36,6 @@ def request_rows(run_id: str, results: Iterable[dict[str, Any]]) -> list[dict[st
                 "run_id": run_id,
                 "task_id": request.task_id,
                 "step_idx": request.step_idx,
-                "slot_id": completion.slot_id,
                 "t_arrive": request.t_arrive,
                 "t_dispatch": request.t_dispatch,
                 "t_first_token": completion.t_first_token,

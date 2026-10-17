@@ -20,7 +20,6 @@ All timestamps are seconds since run start (monotonic clock).
 | run_id | run identifier |
 | task_id | parent task |
 | step_idx | step index within the task |
-| slot_id | llama-server slot used (if reported) |
 | t_arrive | request became ready (prev step / tool finished) |
 | t_dispatch | scheduler sent it to llama-server |
 | t_first_token | first token received (streaming) |
