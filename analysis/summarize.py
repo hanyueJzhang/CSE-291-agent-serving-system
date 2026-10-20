@@ -112,12 +112,17 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     lat = [request_latencies(r) for r in ok_requests]
     request_stats = {key: describe(row[key] for row in lat) for key in lat[0]} if lat else {}
 
+    def excl_tool(t: dict[str, Any]) -> float | None:
+        # Simulated tool time is fixed by the workload seed, not by the scheduler.
+        return _diff(_diff(t.get("t_finish"), t.get("t_arrive")), t.get("total_tool_s") or 0.0)
+
     task_latency = [_diff(t.get("t_finish"), t.get("t_arrive")) for t in ok_tasks]
     by_type: dict[str, Any] = {}
     for task_type in sorted({t["task_type"] for t in ok_tasks}):
         of_type = [t for t in ok_tasks if t["task_type"] == task_type]
         by_type[task_type] = {
             "latency_s": describe(_diff(t["t_finish"], t["t_arrive"]) for t in of_type),
+            "latency_excl_tool_s": describe(excl_tool(t) for t in of_type),
             "queue_s": describe(t.get("total_queue_s") for t in of_type),
             "tool_s": describe(t.get("total_tool_s") for t in of_type),
         }
@@ -169,7 +174,10 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
             "prompt_tokens_per_s": per_s(prompt_tokens),
         },
         "requests": request_stats,
-        "tasks": {"latency_s": describe(task_latency), "by_type": by_type},
+        "tasks": {"latency_s": describe(task_latency),
+                  "latency_excl_tool_s": describe(excl_tool(t) for t in ok_tasks),
+                  "queue_s": describe(t.get("total_queue_s") for t in ok_tasks),
+                  "by_type": by_type},
         "prompt_cache": {
             "cached_ratio_all": cache_ratio(ok_requests),
             # Follow-up steps of agent tasks: did the carried context survive?
@@ -221,14 +229,14 @@ def format_summary(s: dict[str, Any]) -> str:
         d = s["requests"].get(key)
         if d:
             lines.append(f"  {label:<22}" + "".join(f"{_fmt(d[k]):>9}" for k in ("mean", "p50", "p95", "p99", "max")))
-    lines += ["", f"  {'task latency (s)':<22}{'n':>5}{'mean':>9}{'p50':>9}{'p95':>9}{'p99':>9}{'queue':>9}"]
-    rows = [("all", s["tasks"]["latency_s"], None)] + [
-        (t, v["latency_s"], v["queue_s"]) for t, v in s["tasks"]["by_type"].items()
-    ]
-    for name, d, q in rows:
+    lines += ["", f"  {'task latency (s)':<22}{'n':>5}{'mean':>9}{'p50':>9}{'p95':>9}{'p99':>9}"
+                  f"{'p50-tool':>10}{'p99-tool':>10}{'queue':>9}"]
+    rows = [("all", s["tasks"])] + list(s["tasks"]["by_type"].items())
+    for name, v in rows:
+        d, x = v["latency_s"], v["latency_excl_tool_s"]
         lines.append(
             f"  {name:<22}{d['n']:>5}" + "".join(f"{_fmt(d[k]):>9}" for k in ("mean", "p50", "p95", "p99"))
-            + f"{_fmt(q['mean'] if q else None):>9}"
+            + f"{_fmt(x['p50']):>10}{_fmt(x['p99']):>10}{_fmt(v['queue_s']['mean']):>9}"
         )
     pc, m = s["prompt_cache"], s["memory"]
     lines += [
@@ -260,6 +268,7 @@ TABLE_COLUMNS = [
     ("queue_p99_s", lambda s: s["requests"].get("queue_s", {}).get("p99")),
     ("task_latency_p50_s", lambda s: s["tasks"]["latency_s"]["p50"]),
     ("task_latency_p99_s", lambda s: s["tasks"]["latency_s"]["p99"]),
+    ("task_latency_excl_tool_p99_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p99"]),
     ("cached_ratio_followup", lambda s: s["prompt_cache"]["cached_ratio_followup_steps"]),
     ("gpu_mem_peak_mb", lambda s: s["memory"]["gpu_mem_peak_mb"]),
     ("server_rss_peak_mb", lambda s: s["memory"]["server_rss_peak_mb"]),

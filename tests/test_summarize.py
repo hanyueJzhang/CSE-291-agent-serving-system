@@ -92,6 +92,8 @@ class SummarizeRunTests(unittest.TestCase):
     def test_tasks_throughput_cache_memory(self):
         s = self.s
         self.assertAlmostEqual(s["tasks"]["latency_s"]["mean"], 3.0)   # 2.0 and 4.0
+        self.assertAlmostEqual(s["tasks"]["latency_excl_tool_s"]["mean"], 2.5)  # 2.0 and 4.0 - 1.0
+        self.assertAlmostEqual(s["tasks"]["queue_s"]["mean"], 0.75)
         self.assertEqual(sorted(s["tasks"]["by_type"]), ["agent", "short"])
         self.assertEqual(s["tasks"]["by_type"]["short"]["latency_s"]["n"], 1)
         self.assertAlmostEqual(s["makespan_s"], 5.0)                   # 0.0 -> 5.0, all tasks

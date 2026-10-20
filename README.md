@@ -63,7 +63,7 @@ python -m scripts.run_experiment --workload workload/tasks/example_mix.json --sc
 # prompt-cache ablation: --no-cache-prompt
 ```
 
-Then summarize the run (latency percentiles, throughput, prompt-cache reuse, memory peaks):
+Then summarize the run (latency percentiles, throughput, prompt-cache reuse, memory peaks; definitions in [analysis/METRICS.md](analysis/METRICS.md)):
 
 ```bash
 python -m analysis.summarize results/<run_id> --plots          # writes summary.json + PNGs into the run folder
