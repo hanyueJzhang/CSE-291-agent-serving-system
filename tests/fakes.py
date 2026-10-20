@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Callable
 
 from scheduler import Request
+from workload.llama_client import Completion
 
 
 class FakeModelClient:
@@ -19,6 +20,9 @@ class FakeModelClient:
     async def generate(self, messages: list[dict[str, str]], max_tokens: int) -> str:
         self.calls.append({"messages": messages, "max_tokens": max_tokens})
         return self.response
+
+    async def complete(self, messages: list[dict[str, str]], max_tokens: int) -> Completion:
+        return Completion(text=await self.generate(messages=messages, max_tokens=max_tokens))
 
 
 class ImmediateScheduler:

@@ -55,7 +55,13 @@ Only the machine that produces reported numbers must match exactly; dev machines
 
 ## Reproducing results
 
-TODO once the runner exists: one command per experiment, e.g. `python scripts/run_experiment.py --workload workload/tasks/example_mix.json --scheduler fifo --concurrency 4`.
+One command per run, against the llama-server that is already running:
+
+```bash
+python -m scripts.run_experiment --workload workload/tasks/example_mix.json --scheduler fifo --concurrency 4
+# sweep points without new JSON files: --num-tasks N --rate R --seed S
+# prompt-cache ablation: --no-cache-prompt
+```
 
 ## Team workflow
 
