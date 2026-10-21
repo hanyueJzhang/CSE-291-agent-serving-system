@@ -19,6 +19,7 @@ import csv
 import json
 import math
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -132,7 +133,6 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     ends = [t["t_finish"] for t in tasks if t.get("t_finish") is not None]
     makespan = max(ends) - min(starts) if starts and ends else None
     out_tokens = sum(r.get("output_tokens") or 0 for r in ok_requests)
-    prompt_tokens = sum(r.get("prompt_tokens") or 0 for r in ok_requests)
 
     def per_s(count: float) -> float | None:
         return count / makespan if makespan else None
@@ -145,6 +145,22 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     def peak(column: str) -> float | None:
         values = [m[column] for m in memory if m.get(column) is not None]
         return max(values) if values else None
+
+    def uncached(r: dict[str, Any]) -> float | None:
+        prompt = r.get("prompt_tokens")
+        return None if prompt is None else prompt - (r.get("cached_tokens") or 0)
+
+    def prefill(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        # prefill_ms is server time for the uncached prompt tokens only.
+        return {"prefill_ms": describe(r.get("prefill_ms") for r in rows),
+                "uncached_tokens": describe(uncached(r) for r in rows)}
+
+    first_steps = [r for r in ok_requests if (r.get("step_idx") or 0) == 0]
+    followup_steps = [r for r in ok_requests if (r.get("step_idx") or 0) > 0]
+    uncached_tokens = sum(uncached(r) or 0 for r in ok_requests)
+    request_status = Counter(r.get("status") for r in requests)
+    task_status = Counter(t.get("status") for t in tasks)
+    errors = Counter((r.get("error") or "")[:200] for r in requests if r.get("status") != "ok")
 
     gpu_util = [m["gpu_util_pct"] for m in memory if m.get("gpu_util_pct") is not None]
     workload = config.get("workload") or {}
@@ -159,19 +175,26 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
         "seed": workload.get("seed"),
         "server_slots": (config.get("server") or {}).get("total_slots"),
         "ctx_per_slot": (config.get("server") or {}).get("n_ctx_per_slot"),
+        "cache_prompt": (config.get("client") or {}).get("cache_prompt"),
         "counts": {
             "tasks": len(tasks),
             "tasks_ok": len(ok_tasks),
+            "tasks_failed": task_status["failed"],
+            "tasks_timeout": task_status["timeout"],
             "requests": len(requests),
             "requests_ok": len(ok_requests),
-            "requests_failed": len(requests) - len(ok_requests),
+            "requests_error": request_status["error"],
+            "requests_timeout": request_status["timeout"],
         },
+        # Most frequent messages of failed requests, as [message, count].
+        "top_errors": [[msg, n] for msg, n in errors.most_common(3)],
         "makespan_s": makespan,
         "throughput": {
             "tasks_per_s": per_s(len(ok_tasks)),
             "requests_per_s": per_s(len(ok_requests)),
             "output_tokens_per_s": per_s(out_tokens),
-            "prompt_tokens_per_s": per_s(prompt_tokens),
+            # Prompt tokens the server actually computed (cache hits excluded).
+            "uncached_prompt_tokens_per_s": per_s(uncached_tokens),
         },
         "requests": request_stats,
         "tasks": {"latency_s": describe(task_latency),
@@ -181,8 +204,10 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
         "prompt_cache": {
             "cached_ratio_all": cache_ratio(ok_requests),
             # Follow-up steps of agent tasks: did the carried context survive?
-            "cached_ratio_followup_steps": cache_ratio(
-                [r for r in ok_requests if (r.get("step_idx") or 0) > 0]),
+            "cached_ratio_followup_steps": cache_ratio(followup_steps),
+            # What reuse saved: compare prefill of follow-up steps with a --no-cache-prompt run.
+            "first_steps": prefill(first_steps),
+            "followup_steps": prefill(followup_steps),
         },
         "memory": {
             "gpu_mem_peak_mb": peak("gpu_mem_used_mb"),
@@ -211,11 +236,18 @@ def format_summary(s: dict[str, Any]) -> str:
     lines = [
         f"{s['run_id']}",
         f"  setup     {s['scheduler']} c={s['concurrency']}  workload {s['workload']}  "
-        f"rate {s['rate_per_s']}/s  seed {s['seed']}  slots {s['server_slots']} x {s['ctx_per_slot']} tok",
-        f"  counts    tasks ok {c['tasks_ok']}/{c['tasks']}   requests ok {c['requests_ok']}/{c['requests']}",
+        f"rate {s['rate_per_s']}/s  seed {s['seed']}  slots {s['server_slots']} x {s['ctx_per_slot']} tok  "
+        f"prompt cache {({True: 'on', False: 'OFF'}).get(s['cache_prompt'], '?')}",
+        f"  counts    tasks ok {c['tasks_ok']}/{c['tasks']} (failed {c['tasks_failed']}, timeout {c['tasks_timeout']})   "
+        f"requests ok {c['requests_ok']}/{c['requests']} (error {c['requests_error']}, timeout {c['requests_timeout']})",
         f"  makespan  {_fmt(s['makespan_s'], 1)} s   "
         f"tasks/s {_fmt(s['throughput']['tasks_per_s'], 3)}   "
-        f"out tok/s {_fmt(s['throughput']['output_tokens_per_s'], 1)}",
+        f"out tok/s {_fmt(s['throughput']['output_tokens_per_s'], 1)}   "
+        f"uncached prompt tok/s {_fmt(s['throughput']['uncached_prompt_tokens_per_s'], 1)}",
+    ]
+    for msg, n in s["top_errors"]:
+        lines.append(f"  error x{n:<5} {msg}")
+    lines += [
         "",
         f"  {'request':<22}{'mean':>9}{'p50':>9}{'p95':>9}{'p99':>9}{'max':>9}",
     ]
@@ -243,6 +275,14 @@ def format_summary(s: dict[str, Any]) -> str:
         "",
         f"  cache     cached/prompt tokens: all {_fmt(pc['cached_ratio_all'], 3)}   "
         f"follow-up steps {_fmt(pc['cached_ratio_followup_steps'], 3)}",
+        f"  {'prefill (server)':<22}{'n':>5}{'mean ms':>9}{'p50 ms':>9}{'p95 ms':>9}{'uncached tok p50':>18}",
+    ]
+    for name, key in [("first steps", "first_steps"), ("follow-up steps", "followup_steps")]:
+        pf, ut = pc[key]["prefill_ms"], pc[key]["uncached_tokens"]
+        lines.append(f"  {name:<22}{pf['n']:>5}{_fmt(pf['mean'], 1):>9}{_fmt(pf['p50'], 1):>9}"
+                     f"{_fmt(pf['p95'], 1):>9}{_fmt(ut['p50'], 0):>18}")
+    lines += [
+        "",
         f"  memory    gpu peak {_fmt(m['gpu_mem_peak_mb'], 0)} MB   gpu util mean {_fmt(m['gpu_util_mean_pct'], 0)}%   "
         f"rss peak {_fmt(m['server_rss_peak_mb'], 0)} MB   slot tokens peak {_fmt(m['slot_tokens_peak'], 0)}",
     ]
@@ -258,18 +298,31 @@ TABLE_COLUMNS = [
     ("scheduler", lambda s: s["scheduler"]),
     ("concurrency", lambda s: s["concurrency"]),
     ("rate_per_s", lambda s: s["rate_per_s"]),
-    ("tasks_ok", lambda s: s["counts"]["tasks_ok"]),
+    ("seed", lambda s: s["seed"]),
+    ("server_slots", lambda s: s["server_slots"]),
+    ("ctx_per_slot", lambda s: s["ctx_per_slot"]),
+    ("cache_prompt", lambda s: s["cache_prompt"]),
     ("tasks", lambda s: s["counts"]["tasks"]),
+    ("tasks_ok", lambda s: s["counts"]["tasks_ok"]),
+    ("tasks_failed", lambda s: s["counts"]["tasks_failed"]),
+    ("tasks_timeout", lambda s: s["counts"]["tasks_timeout"]),
+    ("requests_error", lambda s: s["counts"]["requests_error"]),
+    ("requests_timeout", lambda s: s["counts"]["requests_timeout"]),
     ("makespan_s", lambda s: s["makespan_s"]),
     ("tasks_per_s", lambda s: s["throughput"]["tasks_per_s"]),
     ("output_tokens_per_s", lambda s: s["throughput"]["output_tokens_per_s"]),
+    ("uncached_prompt_tokens_per_s", lambda s: s["throughput"]["uncached_prompt_tokens_per_s"]),
     ("ttft_p50_s", lambda s: s["requests"].get("ttft_s", {}).get("p50")),
     ("ttft_p99_s", lambda s: s["requests"].get("ttft_s", {}).get("p99")),
     ("queue_p99_s", lambda s: s["requests"].get("queue_s", {}).get("p99")),
     ("task_latency_p50_s", lambda s: s["tasks"]["latency_s"]["p50"]),
     ("task_latency_p99_s", lambda s: s["tasks"]["latency_s"]["p99"]),
+    ("task_latency_excl_tool_p50_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p50"]),
     ("task_latency_excl_tool_p99_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p99"]),
+    ("decode_ms_per_token_p50", lambda s: s["requests"].get("decode_ms_per_token", {}).get("p50")),
     ("cached_ratio_followup", lambda s: s["prompt_cache"]["cached_ratio_followup_steps"]),
+    ("prefill_followup_p50_ms", lambda s: s["prompt_cache"]["followup_steps"]["prefill_ms"]["p50"]),
+    ("gpu_util_mean_pct", lambda s: s["memory"]["gpu_util_mean_pct"]),
     ("gpu_mem_peak_mb", lambda s: s["memory"]["gpu_mem_peak_mb"]),
     ("server_rss_peak_mb", lambda s: s["memory"]["server_rss_peak_mb"]),
     ("slot_tokens_peak", lambda s: s["memory"]["slot_tokens_peak"]),

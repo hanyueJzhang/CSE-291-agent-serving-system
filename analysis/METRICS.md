@@ -49,7 +49,8 @@ Reported overall and per `task_type`.
 `makespan = max(task t_finish) − min(task t_arrive)` over **all** tasks, then
 
 - tasks/s = `#ok tasks / makespan`, requests/s = `#ok requests / makespan`
-- output tokens/s = `Σ output_tokens (ok requests) / makespan`, likewise prompt tokens/s
+- output tokens/s = `Σ output_tokens (ok requests) / makespan`
+- uncached prompt tokens/s = `Σ (prompt_tokens − cached_tokens) (ok requests) / makespan`: prompt tokens the server actually computed. Cache hits are excluded because they cost no prefill.
 
 **Caveat:** when the server keeps up with arrivals, these just equal the arrival rate. In the first `example_mix` run the last task arrived at 112.6 s and the run ended at 114.5 s, so tasks/s ≈ 50 / 114.5 says nothing about capacity. To measure capacity, raise `--rate` until the queue grows.
 
@@ -60,6 +61,15 @@ Reported overall and per `task_type`.
 
 First steps also get up to 41 cached tokens (measured in #11) from the shared chat template and salt, so the all-requests ratio is slightly inflated. The follow-up ratio is the one to compare.
 
+The ratio shows that reuse happened, not what it saved. For that, prefill is reported separately for first steps (`step_idx = 0`) and follow-up steps (`step_idx > 0`):
+
+| metric | formula | notes |
+|---|---|---|
+| prefill | `prefill_ms` (server `timings.prompt_ms`) | server time to process the uncached prompt tokens. Unlike server TTFT it excludes waiting for the batch loop, so it isolates the cost reuse saves. |
+| uncached tokens | `prompt_tokens − cached_tokens` | the tokens that prefill had to compute |
+
+To answer "does reuse matter", run the same configuration with and without `--no-cache-prompt` and compare follow-up prefill (and TTFT). The summary prints `prompt cache on/OFF` so the two runs cannot be confused.
+
 ## Memory
 
 | metric | formula | notes |
@@ -69,6 +79,18 @@ First steps also get up to 41 cached tokens (measured in #11) from the shared ch
 | server RSS peak | `max(server_rss_mb)` | grows with `--cache-ram`; restart the server before each run |
 | slot tokens peak | `max(slot_tokens_total)` | `Σ n_prompt_tokens` over `/slots`: KV **occupied** (idle slots keep old prompts), not KV needed |
 | deferred max | `max(server_requests_deferred)` | > 0 means requests queued inside llama-server, invisible to `queue`; rerun |
+
+## Failures
+
+| metric | counted from |
+|---|---|
+| requests error / timeout | `requests.csv` `status` = `error` / `timeout` |
+| tasks failed / timeout | `tasks.csv` `status` = `failed` / `timeout`; a task ends at its first failed request |
+| top errors | the 3 most frequent `error` messages of failed requests (first 200 characters), with counts |
+
+## Comparison table (`--table`)
+
+One row per run with the setup (scheduler, concurrency, rate, seed, server slots, context per slot, prompt cache on/off), the failure counts, and the main values above. The setup columns tell runs of a sweep apart without parsing `run_id`.
 
 ## Statistics
 

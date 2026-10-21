@@ -12,19 +12,21 @@ from workload.metrics import MEMORY_COLUMNS, REQUEST_COLUMNS, TASK_COLUMNS, writ
 
 
 def req(task_id, step_idx, t_arrive, t_dispatch, t_first, t_finish, prompt, cached, out, decode_ms,
-        status="ok"):
+        status="ok", prefill_ms=None, error="HTTP 400"):
     return {"run_id": "r", "task_id": task_id, "step_idx": step_idx, "t_arrive": t_arrive,
             "t_dispatch": t_dispatch, "t_first_token": t_first, "t_finish": t_finish,
             "prompt_tokens": prompt, "cached_tokens": cached, "output_tokens": out,
-            "prefill_ms": 10, "decode_ms": decode_ms, "status": status,
-            "error": "" if status == "ok" else "HTTP 400"}
+            "prefill_ms": prefill_ms, "decode_ms": decode_ms, "status": status,
+            "error": "" if status == "ok" else error}
 
 
 REQUESTS = [
-    req("t0", 0, 0.0, 0.5, 1.0, 2.0, 100, 0, 10, 500),
-    req("t1", 0, 1.0, 1.0, 1.5, 2.0, 100, 20, 10, 400),
-    req("t1", 2, 3.0, 4.0, 4.5, 5.0, 200, 150, 20, 400),
+    req("t0", 0, 0.0, 0.5, 1.0, 2.0, 100, 0, 10, 500, prefill_ms=100),
+    req("t1", 0, 1.0, 1.0, 1.5, 2.0, 100, 20, 10, 400, prefill_ms=80),
+    req("t1", 2, 3.0, 4.0, 4.5, 5.0, 200, 150, 20, 400, prefill_ms=30),
     req("t2", 0, 2.0, 2.5, None, 3.0, None, None, None, None, status="error"),
+    req("t3", 0, 2.5, 2.5, None, 4.0, None, None, None, None, status="timeout",
+        error="no complete response within 1.5s"),
 ]
 TASKS = [
     {"run_id": "r", "task_id": "t0", "task_type": "short", "t_arrive": 0.0, "t_finish": 2.0,
@@ -33,6 +35,8 @@ TASKS = [
      "num_steps": 2, "total_queue_s": 1.0, "total_tool_s": 1.0, "status": "ok"},
     {"run_id": "r", "task_id": "t2", "task_type": "short", "t_arrive": 2.0, "t_finish": 3.0,
      "num_steps": 1, "total_queue_s": 0.5, "total_tool_s": 0.0, "status": "failed"},
+    {"run_id": "r", "task_id": "t3", "task_type": "short", "t_arrive": 2.5, "t_finish": 4.0,
+     "num_steps": 0, "total_queue_s": 0.0, "total_tool_s": 0.0, "status": "timeout"},
 ]
 MEMORY = [
     {"t": 0.0, "gpu_mem_used_mb": 6000, "gpu_util_pct": 50, "server_rss_mb": 1000,
@@ -41,6 +45,7 @@ MEMORY = [
      "slot_tokens_total": 400, "server_requests_deferred": 0},
 ]
 CONFIG = {"run_id": "r", "scheduler": {"name": "fifo", "max_concurrency": 4},
+          "client": {"cache_prompt": True},
           "workload": {"name": "mix", "seed": 1, "arrival": {"rate_per_s": 0.5}},
           "server": {"total_slots": 4, "n_ctx_per_slot": 2048}, "warnings": ["w1"]}
 
@@ -72,10 +77,24 @@ class SummarizeRunTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_counts_exclude_failures_from_latency(self):
-        self.assertEqual(self.s["counts"], {"tasks": 3, "tasks_ok": 2, "requests": 4,
-                                            "requests_ok": 3, "requests_failed": 1})
+    def test_counts_split_failures_and_exclude_them_from_latency(self):
+        self.assertEqual(self.s["counts"], {
+            "tasks": 4, "tasks_ok": 2, "tasks_failed": 1, "tasks_timeout": 1,
+            "requests": 5, "requests_ok": 3, "requests_error": 1, "requests_timeout": 1,
+        })
+        self.assertEqual(self.s["top_errors"],
+                         [["HTTP 400", 1], ["no complete response within 1.5s", 1]])
         self.assertEqual(self.s["requests"]["e2e_s"]["n"], 3)
+
+    def test_prefill_by_step(self):
+        pc = self.s["prompt_cache"]
+        # first steps: t0 (100 ms, 100 uncached), t1 step 0 (80 ms, 80 uncached)
+        self.assertEqual(pc["first_steps"]["prefill_ms"]["n"], 2)
+        self.assertAlmostEqual(pc["first_steps"]["prefill_ms"]["mean"], 90.0)
+        self.assertAlmostEqual(pc["first_steps"]["uncached_tokens"]["p50"], 90.0)
+        # follow-up: t1 step 2 (30 ms, 200 - 150 = 50 uncached)
+        self.assertEqual(pc["followup_steps"]["prefill_ms"]["p50"], 30.0)
+        self.assertEqual(pc["followup_steps"]["uncached_tokens"]["p50"], 50.0)
 
     def test_request_latencies(self):
         r = self.s["requests"]
@@ -99,6 +118,7 @@ class SummarizeRunTests(unittest.TestCase):
         self.assertAlmostEqual(s["makespan_s"], 5.0)                   # 0.0 -> 5.0, all tasks
         self.assertAlmostEqual(s["throughput"]["tasks_per_s"], 2 / 5)
         self.assertAlmostEqual(s["throughput"]["output_tokens_per_s"], 40 / 5)
+        self.assertAlmostEqual(s["throughput"]["uncached_prompt_tokens_per_s"], (100 + 80 + 50) / 5)
         self.assertAlmostEqual(s["prompt_cache"]["cached_ratio_all"], 170 / 400)
         self.assertAlmostEqual(s["prompt_cache"]["cached_ratio_followup_steps"], 150 / 200)
         self.assertEqual(s["memory"]["gpu_mem_peak_mb"], 6100)
@@ -106,6 +126,7 @@ class SummarizeRunTests(unittest.TestCase):
         self.assertEqual(s["memory"]["server_rss_peak_mb"], 1200)
         self.assertEqual(s["memory"]["server_requests_deferred_max"], 0)
         self.assertEqual((s["scheduler"], s["concurrency"], s["rate_per_s"]), ("fifo", 4, 0.5))
+        self.assertIs(s["cache_prompt"], True)
         self.assertEqual(s["warnings"], ["w1"])
 
     def test_table(self):
@@ -115,6 +136,10 @@ class SummarizeRunTests(unittest.TestCase):
             rows = list(csv.DictReader(f))
         self.assertEqual(rows[0]["run_id"], "r")
         self.assertEqual(float(rows[0]["ttft_p50_s"]), 1.0)
+        self.assertEqual(rows[0]["cache_prompt"], "True")
+        self.assertEqual((rows[0]["tasks_failed"], rows[0]["tasks_timeout"]), ("1", "1"))
+        self.assertEqual((rows[0]["seed"], rows[0]["ctx_per_slot"]), ("1", "2048"))
+        self.assertEqual(float(rows[0]["prefill_followup_p50_ms"]), 30.0)
 
 
 class CliTests(unittest.TestCase):
