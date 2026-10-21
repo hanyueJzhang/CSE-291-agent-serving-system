@@ -44,6 +44,10 @@ Each is reported as mean, P50, P95, P99 and max.
 
 Reported overall and per `task_type`.
 
+## By step (context growth)
+
+`ok` requests grouped by `<task_type>/step<step_idx>`; `step_idx` counts tool steps, so agent LLM steps are `step0`, `step2`, `step4`. Each group reports prompt tokens, uncached tokens, prefill, server TTFT and decode ms/token.
+
 ## Throughput
 
 `makespan = max(task t_finish) − min(task t_arrive)` over **all** tasks, then
@@ -79,6 +83,8 @@ To answer "does reuse matter", run the same configuration with and without `--no
 | server RSS peak | `max(server_rss_mb)` | grows with `--cache-ram`; restart the server before each run |
 | slot tokens peak | `max(slot_tokens_total)` | `Σ n_prompt_tokens` over `/slots`: KV **occupied** (idle slots keep old prompts), not KV needed |
 | deferred max | `max(server_requests_deferred)` | > 0 means requests queued inside llama-server, invisible to `queue`; rerun |
+| active slot tokens | `Σ prompt_tokens` of requests with `t_dispatch ≤ t < t_finish` at each sample | KV used by requests in flight |
+| idle slot tokens (peak, mean) | `max(slot_tokens_total − active, 0)` | KV held by idle slots, e.g. during tool calls. Assumes an idle slot's `n_prompt_tokens` in `/slots` stays non-zero; check once on the pinned llama.cpp |
 
 ## Failures
 
