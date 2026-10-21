@@ -104,6 +104,26 @@ def request_latencies(req: dict[str, Any]) -> dict[str, float | None]:
     }
 
 
+def slot_token_split(requests: list[dict[str, Any]], memory: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Split each sample's slot_tokens_total into active and idle tokens.
+
+    active: prompt tokens of requests in flight at the sample time
+    (t_dispatch <= t < t_finish, any status). idle: the rest, i.e. old prompts
+    left in slots that are not serving a request, such as an agent's context
+    while it waits for a tool.
+    """
+    spans = [(r["t_dispatch"], r["t_finish"], r.get("prompt_tokens") or 0) for r in requests
+             if r.get("t_dispatch") is not None and r.get("t_finish") is not None]
+    out = []
+    for m in memory:
+        t, total = m.get("t"), m.get("slot_tokens_total")
+        if t is None or total is None:
+            continue
+        active = sum(tokens for start, end, tokens in spans if start <= t < end)
+        out.append({"t": t, "total": total, "active": active, "idle": max(total - active, 0)})
+    return out
+
+
 def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
     config = run["config"]
     requests, tasks, memory = run["requests"], run["tasks"], run["memory"]
@@ -155,6 +175,22 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
         return {"prefill_ms": describe(r.get("prefill_ms") for r in rows),
                 "uncached_tokens": describe(uncached(r) for r in rows)}
 
+    # Per task type and step: how prompt length grows along an agent task and what it costs.
+    task_type_of = {t["task_id"]: t.get("task_type") for t in tasks}
+    by_step: dict[str, Any] = {}
+    for key in sorted({(task_type_of.get(r["task_id"]) or "?", int(r.get("step_idx") or 0)) for r in ok_requests}):
+        rows = [r for r in ok_requests
+                if (task_type_of.get(r["task_id"]) or "?", int(r.get("step_idx") or 0)) == key]
+        by_step[f"{key[0]}/step{key[1]}"] = {
+            "prompt_tokens": describe(r.get("prompt_tokens") for r in rows),
+            "server_ttft_s": describe(request_latencies(r)["server_ttft_s"] for r in rows),
+            "decode_ms_per_token": describe(request_latencies(r)["decode_ms_per_token"] for r in rows),
+            **prefill(rows),
+        }
+
+    split = slot_token_split(requests, memory)
+    idle = [s["idle"] for s in split]
+
     first_steps = [r for r in ok_requests if (r.get("step_idx") or 0) == 0]
     followup_steps = [r for r in ok_requests if (r.get("step_idx") or 0) > 0]
     uncached_tokens = sum(uncached(r) or 0 for r in ok_requests)
@@ -197,6 +233,8 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
             "uncached_prompt_tokens_per_s": per_s(uncached_tokens),
         },
         "requests": request_stats,
+        # Keyed "<task_type>/step<step_idx>"; step_idx counts tool steps too (agent LLM steps are 0, 2, 4).
+        "by_step": by_step,
         "tasks": {"latency_s": describe(task_latency),
                   "latency_excl_tool_s": describe(excl_tool(t) for t in ok_tasks),
                   "queue_s": describe(t.get("total_queue_s") for t in ok_tasks),
@@ -214,6 +252,10 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
             "gpu_util_mean_pct": sum(gpu_util) / len(gpu_util) if gpu_util else None,
             "server_rss_peak_mb": peak("server_rss_mb"),
             "slot_tokens_peak": peak("slot_tokens_total"),
+            # slot_tokens_total split into in-flight requests and old prompts in idle slots
+            "active_slot_tokens_peak": max((s["active"] for s in split), default=None),
+            "idle_slot_tokens_peak": max(idle, default=None),
+            "idle_slot_tokens_mean": sum(idle) / len(idle) if idle else None,
             "server_requests_deferred_max": peak("server_requests_deferred"),
             "samples": len(memory),
         },
@@ -270,6 +312,16 @@ def format_summary(s: dict[str, Any]) -> str:
             f"  {name:<22}{d['n']:>5}" + "".join(f"{_fmt(d[k]):>9}" for k in ("mean", "p50", "p95", "p99"))
             + f"{_fmt(x['p50']):>10}{_fmt(x['p99']):>10}{_fmt(v['queue_s']['mean']):>9}"
         )
+    lines += ["", f"  {'by step (p50)':<22}{'n':>5}{'prompt':>9}{'uncached':>10}{'prefill':>9}"
+                  f"{'srv TTFT':>10}{'srv TTFT':>10}{'decode':>9}",
+              f"  {'':<22}{'':>5}{'tok':>9}{'tok':>10}{'ms':>9}{'p50 s':>10}{'p95 s':>10}{'ms/tok':>9}"]
+    for name, v in s["by_step"].items():
+        lines.append(
+            f"  {name:<22}{v['prompt_tokens']['n']:>5}{_fmt(v['prompt_tokens']['p50'], 0):>9}"
+            f"{_fmt(v['uncached_tokens']['p50'], 0):>10}{_fmt(v['prefill_ms']['p50'], 1):>9}"
+            f"{_fmt(v['server_ttft_s']['p50']):>10}{_fmt(v['server_ttft_s']['p95']):>10}"
+            f"{_fmt(v['decode_ms_per_token']['p50']):>9}"
+        )
     pc, m = s["prompt_cache"], s["memory"]
     lines += [
         "",
@@ -284,7 +336,9 @@ def format_summary(s: dict[str, Any]) -> str:
     lines += [
         "",
         f"  memory    gpu peak {_fmt(m['gpu_mem_peak_mb'], 0)} MB   gpu util mean {_fmt(m['gpu_util_mean_pct'], 0)}%   "
-        f"rss peak {_fmt(m['server_rss_peak_mb'], 0)} MB   slot tokens peak {_fmt(m['slot_tokens_peak'], 0)}",
+        f"rss peak {_fmt(m['server_rss_peak_mb'], 0)} MB",
+        f"  slots     tokens peak {_fmt(m['slot_tokens_peak'], 0)}   active peak {_fmt(m['active_slot_tokens_peak'], 0)}   "
+        f"idle peak {_fmt(m['idle_slot_tokens_peak'], 0)}   idle mean {_fmt(m['idle_slot_tokens_mean'], 0)}",
     ]
     if m["server_requests_deferred_max"]:
         lines.append("  CHECK     server_requests_deferred > 0: requests queued inside llama-server; rerun")
@@ -326,6 +380,7 @@ TABLE_COLUMNS = [
     ("gpu_mem_peak_mb", lambda s: s["memory"]["gpu_mem_peak_mb"]),
     ("server_rss_peak_mb", lambda s: s["memory"]["server_rss_peak_mb"]),
     ("slot_tokens_peak", lambda s: s["memory"]["slot_tokens_peak"]),
+    ("idle_slot_tokens_mean", lambda s: s["memory"]["idle_slot_tokens_mean"]),
 ]
 
 
@@ -372,9 +427,15 @@ def plot_run(run: dict[str, Any]) -> list[Path]:
         for ax, (column, label) in zip(axes, panels):
             pts = [(m["t"], m[column]) for m in memory if m.get("t") is not None and m.get(column) is not None]
             if pts:
-                ax.plot([p[0] for p in pts], [p[1] for p in pts])
+                ax.plot([p[0] for p in pts], [p[1] for p in pts], label="total")
             ax.set_ylabel(label)
             ax.grid(alpha=0.3)
+        split = slot_token_split(run["requests"], memory)
+        if split:
+            ax = axes[-1]
+            for key in ("active", "idle"):
+                ax.plot([s["t"] for s in split], [s[key] for s in split], label=key)
+            ax.legend(fontsize=8)
         axes[-1].set_xlabel("seconds since run start")
         axes[0].set_title(run["dir"].name, fontsize=9)
         fig.tight_layout()

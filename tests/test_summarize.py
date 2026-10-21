@@ -96,6 +96,26 @@ class SummarizeRunTests(unittest.TestCase):
         self.assertEqual(pc["followup_steps"]["prefill_ms"]["p50"], 30.0)
         self.assertEqual(pc["followup_steps"]["uncached_tokens"]["p50"], 50.0)
 
+    def test_by_task_type_and_step(self):
+        by_step = self.s["by_step"]
+        self.assertEqual(list(by_step), ["agent/step0", "agent/step2", "short/step0"])
+        step2 = by_step["agent/step2"]
+        self.assertEqual(step2["prompt_tokens"]["p50"], 200.0)
+        self.assertEqual(step2["uncached_tokens"]["p50"], 50.0)
+        self.assertEqual(step2["prefill_ms"]["p50"], 30.0)
+        self.assertAlmostEqual(step2["server_ttft_s"]["p50"], 0.5)
+        self.assertAlmostEqual(step2["decode_ms_per_token"]["p50"], 20.0)
+        # failed requests of short tasks t2, t3 are left out
+        self.assertEqual(by_step["short/step0"]["prompt_tokens"]["n"], 1)
+
+    def test_slot_tokens_split_into_active_and_idle(self):
+        # t=0.0: nothing in flight, so all 100 tokens are idle.
+        # t=1.0: t0 (100) and t1 step 0 (100) in flight, 400 - 200 = 200 idle.
+        m = self.s["memory"]
+        self.assertEqual(m["active_slot_tokens_peak"], 200)
+        self.assertEqual(m["idle_slot_tokens_peak"], 200)
+        self.assertEqual(m["idle_slot_tokens_mean"], 150)
+
     def test_request_latencies(self):
         r = self.s["requests"]
         # queue 0.5, 0.0, 1.0 ; ttft incl. queue 1.0, 0.5, 1.5 ; server ttft 0.5, 0.5, 0.5
