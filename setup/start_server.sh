@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Start llama-server with the pinned config. Override per run, e.g.:
 #   CTX=16384 PARALLEL=8 bash setup/start_server.sh
+#   EXTRA_ARGS="--cache-ram 0" bash setup/start_server.sh   # extra llama-server flags
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source setup/config.env
@@ -8,4 +9,4 @@ source setup/config.env
 exec third_party/llama.cpp/build/bin/llama-server \
   -m "models/$MODEL_FILE" \
   -c "$CTX" --parallel "$PARALLEL" -ngl "$NGL" \
-  --host 0.0.0.0 --port "$SERVER_PORT" --metrics
+  --host 0.0.0.0 --port "$SERVER_PORT" --metrics ${EXTRA_ARGS:-}

@@ -70,6 +70,15 @@ python -m analysis.summarize results/<run_id> --plots          # writes summary.
 python -m analysis.summarize results/example_mix_fifo_c* --table results/sweep.csv   # one row per run
 ```
 
+For a set of runs, write a plan (e.g. `scripts/sweeps/phase1_baseline.json`) and let the sweep restart llama-server before each run, so no run inherits another's cache or memory:
+
+```bash
+python -m scripts.sweep scripts/sweeps/phase1_baseline.json --dry-run   # show what will run
+tmux new -s sweep 'python -m scripts.sweep scripts/sweeps/phase1_baseline.json'
+# results/phase1_baseline/<run_id>/ per run, results/phase1_baseline/sweep.csv for all;
+# rerun the same command to resume after an interruption
+```
+
 ## Team workflow
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

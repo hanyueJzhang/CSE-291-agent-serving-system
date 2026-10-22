@@ -56,7 +56,7 @@ class FakeLlamaServer:
     /health, and `metrics_enabled = False` to mimic a server without --metrics.
     """
 
-    def __init__(self, total_slots=2, n_ctx=2048):
+    def __init__(self, total_slots=2, n_ctx=2048, port=None):
         self.bodies = []
         self.handler = self.stream(NORMAL_STREAM)
         self.health_statuses = [200]
@@ -70,7 +70,7 @@ class FakeLlamaServer:
         app.router.add_get("/props", self._props)
         app.router.add_get("/slots", self._slots)
         app.router.add_get("/metrics", self._metrics)
-        self.server = TestServer(app)
+        self.server = TestServer(app, port=port)
 
     async def start(self):
         await self.server.start_server()
@@ -147,3 +147,24 @@ class FakeLlamaServer:
             return resp
 
         return handler
+
+
+async def _serve_forever() -> None:
+    """Run as a stand-in for setup/start_server.sh (tests/test_sweep.py).
+
+    Reads SERVER_PORT and PARALLEL like the real script, and records the
+    environment it was started with to FAKE_SERVER_ENV_LOG if set.
+    """
+    import os
+    if os.environ.get("FAKE_SERVER_ENV_LOG"):
+        with open(os.environ["FAKE_SERVER_ENV_LOG"], "a") as f:
+            f.write(json.dumps({k: os.environ.get(k) for k in ("CTX", "PARALLEL", "EXTRA_ARGS")}) + "\n")
+    fake = FakeLlamaServer(total_slots=int(os.environ.get("PARALLEL", "2")),
+                           port=int(os.environ["SERVER_PORT"]))
+    fake.handler = FakeLlamaServer.stream(NORMAL_STREAM, delay_s=0.002)
+    await fake.start()
+    await asyncio.Event().wait()
+
+
+if __name__ == "__main__":
+    asyncio.run(_serve_forever())
