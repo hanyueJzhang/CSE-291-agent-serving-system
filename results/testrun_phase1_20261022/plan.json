@@ -1,0 +1,83 @@
+{
+  "_comment": "Phase 1 first sweep on the default server (8192 / 4 = 2048 tokens per slot). rate_c4_r0.5 is also the cache-on baseline for cache_off.",
+  "name": "phase1_baseline",
+  "server": {
+    "CTX": 8192,
+    "PARALLEL": 4
+  },
+  "args": [
+    "--workload",
+    "workload/tasks/example_mix.json",
+    "--scheduler",
+    "fifo"
+  ],
+  "runs": [
+    {
+      "run_id": "rate_c4_r0.5",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r1",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r2",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "2",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r4",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "4",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "ctx_c1",
+      "args": [
+        "--concurrency",
+        "1",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "50"
+      ]
+    },
+    {
+      "run_id": "cache_off",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "200",
+        "--no-cache-prompt"
+      ]
+    }
+  ]
+}
