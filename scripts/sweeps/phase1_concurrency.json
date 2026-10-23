@@ -1,0 +1,135 @@
+{
+  "_comment": "Find the best fixed concurrency for FIFO on example_mix. c1-c4 on the 8192/4 server; p8_c8 uses 8 slots of 2048 (16384/8) so 8 requests really run at once; c8_server_queue sends 8 to 4 slots, so 4 wait inside llama-server where our queue_s does not see them.",
+  "name": "phase1_concurrency",
+  "server": {
+    "CTX": 8192,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--workload",
+    "workload/tasks/example_mix.json",
+    "--scheduler",
+    "fifo",
+    "--num-tasks",
+    "100"
+  ],
+  "runs": [
+    {
+      "run_id": "c1_r0.5",
+      "args": [
+        "--concurrency",
+        "1",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "c1_r1",
+      "args": [
+        "--concurrency",
+        "1",
+        "--rate",
+        "1"
+      ]
+    },
+    {
+      "run_id": "c2_r0.5",
+      "args": [
+        "--concurrency",
+        "2",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "c2_r1",
+      "args": [
+        "--concurrency",
+        "2",
+        "--rate",
+        "1"
+      ]
+    },
+    {
+      "run_id": "c3_r0.5",
+      "args": [
+        "--concurrency",
+        "3",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "c3_r1",
+      "args": [
+        "--concurrency",
+        "3",
+        "--rate",
+        "1"
+      ]
+    },
+    {
+      "run_id": "c4_r0.5",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "c4_r1",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1"
+      ]
+    },
+    {
+      "run_id": "p8_c8_r0.5",
+      "server": {
+        "CTX": 16384,
+        "PARALLEL": 8
+      },
+      "args": [
+        "--concurrency",
+        "8",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "p8_c8_r1",
+      "server": {
+        "CTX": 16384,
+        "PARALLEL": 8
+      },
+      "args": [
+        "--concurrency",
+        "8",
+        "--rate",
+        "1"
+      ]
+    },
+    {
+      "run_id": "c8_server_queue_r0.5",
+      "args": [
+        "--concurrency",
+        "8",
+        "--rate",
+        "0.5"
+      ]
+    },
+    {
+      "run_id": "c8_server_queue_r1",
+      "args": [
+        "--concurrency",
+        "8",
+        "--rate",
+        "1"
+      ]
+    }
+  ]
+}
