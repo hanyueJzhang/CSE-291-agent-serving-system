@@ -28,7 +28,7 @@ Plan file (JSON):
     }
 
 "server" values become environment variables of setup/start_server.sh, which
-reads CTX, PARALLEL, NGL, SERVER_PORT and EXTRA_ARGS (e.g. "--cache-ram 0").
+reads CTX, PARALLEL, NGL, SERVER_PORT, CACHE_RAM (MiB, 0 = off) and EXTRA_ARGS.
 A run's "server" is merged over the plan's; its "args" follow the plan's.
 """
 

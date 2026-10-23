@@ -37,7 +37,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 bash setup/build_llama.sh          # add --cpu for a CPU-only build
 bash setup/download_model.sh
-bash setup/start_server.sh         # override e.g. CTX=16384 PARALLEL=8 bash setup/start_server.sh
+bash setup/start_server.sh         # override e.g. CTX=16384 PARALLEL=8 CACHE_RAM=0 bash setup/start_server.sh
 
 # sanity check (another terminal)
 curl localhost:8080/health
