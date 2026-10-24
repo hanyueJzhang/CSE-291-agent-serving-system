@@ -1,0 +1,184 @@
+{
+  "_comment": "Phase 1 FIFO baseline on 8192/4 (2048 tokens per slot) with the host-RAM prompt cache off (CACHE_RAM=0), so all KV reuse comes from the GPU slots a scheduler controls. 16384/8 was rejected: decode ~29 vs ~16 ms/token (results/memtest_ab). rate_c4_r0.5 is the cache-on pair for cache_off; cram* runs measure how much a host-RAM cache tier recovers under FIFO.",
+  "name": "phase1_baseline",
+  "server": {
+    "CTX": 8192,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--workload",
+    "workload/tasks/example_mix.json",
+    "--scheduler",
+    "fifo"
+  ],
+  "runs": [
+    {
+      "run_id": "rate_c4_r0.5",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r0.6",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.6",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r0.7",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.7",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r0.8",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.8",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r0.9",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.9",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r1",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r1.5",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1.5",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "rate_c4_r4",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "4",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "ctx_c1",
+      "args": [
+        "--concurrency",
+        "1",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "50"
+      ]
+    },
+    {
+      "run_id": "cache_off",
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "0.5",
+        "--num-tasks",
+        "200",
+        "--no-cache-prompt"
+      ]
+    },
+    {
+      "run_id": "cram2g_r1",
+      "server": {
+        "CACHE_RAM": 2048
+      },
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "cram2g_r4",
+      "server": {
+        "CACHE_RAM": 2048
+      },
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "4",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "cram8g_r1",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "1",
+        "--num-tasks",
+        "200"
+      ]
+    },
+    {
+      "run_id": "cram8g_r4",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "args": [
+        "--concurrency",
+        "4",
+        "--rate",
+        "4",
+        "--num-tasks",
+        "200"
+      ]
+    }
+  ]
+}
