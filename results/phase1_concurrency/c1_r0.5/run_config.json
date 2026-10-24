@@ -1,0 +1,172 @@
+{
+  "run_id": "c1_r0.5",
+  "status": "done",
+  "started_at": "2026-10-24T14:52:00.984300-07:00",
+  "argv": [
+    "/home/hanyue/CSE-291-agent-serving-system/scripts/run_experiment.py",
+    "--workload",
+    "workload/tasks/example_mix.json",
+    "--scheduler",
+    "fifo",
+    "--num-tasks",
+    "100",
+    "--concurrency",
+    "1",
+    "--rate",
+    "0.5",
+    "--run-id",
+    "c1_r0.5",
+    "--results-dir",
+    "/home/hanyue/CSE-291-agent-serving-system/results/phase1_concurrency",
+    "--url",
+    "http://localhost:8080"
+  ],
+  "workload_file": "workload/tasks/example_mix.json",
+  "workload": {
+    "_comment": "DRAFT workload schema. One file = one workload mix. Times in seconds, lengths in tokens.",
+    "name": "example_mix",
+    "seed": 42,
+    "arrival": {
+      "process": "poisson",
+      "rate_per_s": 0.5,
+      "num_tasks": 100
+    },
+    "task_types": [
+      {
+        "type": "short_chat",
+        "weight": 0.4,
+        "steps": [
+          {
+            "kind": "llm",
+            "prompt_tokens": 256,
+            "max_output_tokens": 64
+          }
+        ]
+      },
+      {
+        "type": "long_context_qa",
+        "weight": 0.3,
+        "steps": [
+          {
+            "kind": "llm",
+            "prompt_tokens": 1500,
+            "max_output_tokens": 128
+          }
+        ]
+      },
+      {
+        "type": "agent_3step",
+        "weight": 0.3,
+        "steps": [
+          {
+            "kind": "llm",
+            "prompt_tokens": 512,
+            "max_output_tokens": 128
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "uniform",
+              "min": 0.5,
+              "max": 2.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 128,
+            "carry_context": true
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "fixed",
+              "value": 1.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 256,
+            "carry_context": true
+          }
+        ]
+      }
+    ]
+  },
+  "num_tasks": 100,
+  "prompt_salt": "[run 7fe69924]",
+  "scheduler": {
+    "name": "fifo",
+    "max_concurrency": 1
+  },
+  "client": {
+    "base_url": "http://localhost:8080",
+    "timeout_s": 300.0,
+    "temperature": 0.0,
+    "seed": 0,
+    "ignore_eos": true,
+    "cache_prompt": true
+  },
+  "server": {
+    "url": "http://localhost:8080",
+    "total_slots": 4,
+    "n_ctx_per_slot": 2048,
+    "model_path": "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "build_info": "b11567-972b5fcc1",
+    "endpoint_slots": true,
+    "endpoint_metrics": true,
+    "chat_template_sha256": "93c0e9aa3629bbd7",
+    "slots_n_ctx": [
+      2048,
+      2048,
+      2048,
+      2048
+    ],
+    "cmdline": [
+      "third_party/llama.cpp/build/bin/llama-server",
+      "-m",
+      "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      "-c",
+      "8192",
+      "--parallel",
+      "4",
+      "-ngl",
+      "99",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "--metrics",
+      "--cache-ram",
+      "0"
+    ]
+  },
+  "pinned": {
+    "LLAMA_CPP_REPO": "https://github.com/ggml-org/llama.cpp",
+    "LLAMA_CPP_COMMIT": "972b5fcc19670e597f8de9bf5cacfb85752a5fff",
+    "MODEL_HF_REPO": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+    "MODEL_FILE": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "SERVER_PORT": "${SERVER_PORT:-8080}",
+    "CTX": "${CTX:-8192}",
+    "PARALLEL": "${PARALLEL:-4}",
+    "NGL": "${NGL:-99}",
+    "CACHE_RAM": "${CACHE_RAM:-2048}"
+  },
+  "repo": {
+    "commit": "2f5d89e61a35eaf8da432b224feb89488752eb7c",
+    "branch": "main",
+    "dirty": false
+  },
+  "host": {
+    "hostname": "JamesPC",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "environment": "date:            2026-10-24T14:51:58-07:00\nrepo_commit:     2f5d89e\nos:              Ubuntu 24.04.5 LTS / kernel 6.18.54.1-microsoft-standard-WSL2\nwsl:             yes\ncpu:             AMD Ryzen 7 7700X 8-Core Processor\nram_total:       15 GB\ngpu:             NVIDIA GeForce RTX 3080, 10240 MiB, 617.42\ncuda_toolkit:    release 13.3\npython:          Python 3.12.3\nllama_cpp:       972b5fcc1 (pinned: 972b5fcc19670e597f8de9bf5cacfb85752a5fff)\nmodel:           Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf sha256=7b064f5842bf9532\nserver_defaults: CTX=8192 PARALLEL=4 NGL=99",
+  "sample_interval_s": 0.5,
+  "warmup_requests": 1,
+  "warnings": [],
+  "ended_at": "2026-10-24T14:56:09.999643-07:00",
+  "sampler_notes": []
+}
