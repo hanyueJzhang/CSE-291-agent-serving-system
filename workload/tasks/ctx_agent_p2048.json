@@ -1,0 +1,50 @@
+{
+  "_comment": "Context-size sweep: agent_3step only, first prompt 2048 tokens (follow-ups append 300 each). Peak context ~3160 tokens; needs >= 6144 tokens per slot for p=4096.",
+  "name": "ctx_agent_p2048",
+  "seed": 42,
+  "arrival": {
+    "process": "poisson",
+    "rate_per_s": 0.4,
+    "num_tasks": 100
+  },
+  "task_types": [
+    {
+      "type": "agent_3step",
+      "weight": 1.0,
+      "steps": [
+        {
+          "kind": "llm",
+          "prompt_tokens": 2048,
+          "max_output_tokens": 128
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "uniform",
+            "min": 0.5,
+            "max": 2.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 128,
+          "carry_context": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "fixed",
+            "value": 1.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 256,
+          "carry_context": true
+        }
+      ]
+    }
+  ]
+}
