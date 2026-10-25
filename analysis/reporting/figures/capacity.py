@@ -16,7 +16,7 @@ def render(frame: pd.DataFrame, spec: dict[str, Any], output_base: Path,
            formats: Iterable[str]) -> list[Path]:
     required = [
         "rate_per_s", "tasks_per_s", "task_latency_p50_s",
-        "task_latency_p95_s", "queue_p95_s",
+        "task_latency_p95_s", "task_queue_p95_s",
     ]
     validate_figure(frame, spec, required)
     data = frame.sort_values("rate_per_s")
@@ -36,8 +36,8 @@ def render(frame: pd.DataFrame, spec: dict[str, Any], output_base: Path,
                  color=COLORS["blue"], label="task P50")
     latency.plot(x, data["task_latency_p95_s"].astype(float), marker="o",
                  color=COLORS["orange"], label="task P95")
-    latency.plot(x, data["queue_p95_s"].astype(float), marker="s", linestyle="--",
-                 color=COLORS["red"], label="request queue P95")
+    latency.plot(x, data["task_queue_p95_s"].astype(float), marker="s", linestyle="--",
+                 color=COLORS["red"], label="accumulated queue time P95")
     latency.set(xlabel="Offered task rate (tasks/s)", ylabel="Latency (s)")
     latency.legend()
 

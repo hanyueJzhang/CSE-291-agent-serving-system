@@ -32,7 +32,7 @@
     {
       "id": "concurrency",
       "type": "concurrency",
-      "title": "Request concurrency versus server parallelism",
+      "title": "Effect of scheduler concurrency on a 4-slot server",
       "runs": [
         "results/phase1_concurrency/c1_r0.5",
         "results/phase1_concurrency/c1_r1",
@@ -43,14 +43,13 @@
         "results/phase1_concurrency/c4_r0.5",
         "results/phase1_concurrency/c4_r1",
         "results/phase1_concurrency/c8_server_queue_r0.5",
-        "results/phase1_concurrency/c8_server_queue_r1",
-        "results/phase1_concurrency/p8_c8_r0.5",
-        "results/phase1_concurrency/p8_c8_r1"
+        "results/phase1_concurrency/c8_server_queue_r1"
       ],
       "require_constant": [
         "workload_family",
         "scheduler",
         "seed",
+        "server_slots",
         "ctx_per_slot",
         "cache_prompt",
         "cache_ram_mb"

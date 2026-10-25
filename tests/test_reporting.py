@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from analysis.reporting.figures.capacity import render as render_capacity
+from analysis.reporting.figures.concurrency import render as render_concurrency
 from analysis.reporting.loader import load_manifest, load_run, load_runs, run_frame, step_frame
 from analysis.reporting.style import apply_style
 from analysis.reporting.validation import require_constant, select_runs
@@ -60,6 +61,7 @@ class ReportingLoaderTests(unittest.TestCase):
         self.assertEqual(frame.loc[0, "initial_prompt_tokens"], 512)
         self.assertEqual(frame.loc[0, "phase"], 1)
         self.assertEqual(frame.loc[0, "task_latency_p95_s"], 2.0)
+        self.assertEqual(frame.loc[0, "task_queue_p95_s"], 2.0)
         self.assertEqual(frame.loc[0, "slot_occupancy_ratio"], 0.5)
         self.assertEqual((steps.loc[0, "task_type"], steps.loc[0, "step_idx"]), ("agent", 0))
 
@@ -84,9 +86,9 @@ class ReportingValidationTests(unittest.TestCase):
     def test_capacity_figure_smoke(self):
         frame = pd.DataFrame([
             {"rate_per_s": 0.5, "tasks_per_s": 0.48, "task_latency_p50_s": 2.0,
-             "task_latency_p95_s": 4.0, "queue_p95_s": 1.0, "policy": "fifo"},
+             "task_latency_p95_s": 4.0, "task_queue_p95_s": 1.0, "policy": "fifo"},
             {"rate_per_s": 1.0, "tasks_per_s": 0.8, "task_latency_p50_s": 5.0,
-             "task_latency_p95_s": 12.0, "queue_p95_s": 8.0, "policy": "fifo"},
+             "task_latency_p95_s": 12.0, "task_queue_p95_s": 8.0, "policy": "fifo"},
         ])
         apply_style()
         with tempfile.TemporaryDirectory() as tmp:
@@ -94,6 +96,32 @@ class ReportingValidationTests(unittest.TestCase):
                 frame,
                 {"id": "capacity", "title": "Capacity", "require_constant": ["policy"]},
                 Path(tmp) / "capacity",
+                ["png"],
+            )
+            self.assertEqual(len(paths), 1)
+            self.assertGreater(paths[0].stat().st_size, 0)
+
+    def test_concurrency_figure_smoke(self):
+        frame = pd.DataFrame([
+            {"rate_per_s": rate, "concurrency": concurrency, "server_slots": 4,
+             "tasks_per_s": throughput, "task_latency_p95_s": latency,
+             "server_requests_deferred_max": deferred, "policy": "fifo"}
+            for rate, concurrency, throughput, latency, deferred in [
+                (0.5, 1, 0.4, 40.0, 0),
+                (0.5, 4, 0.49, 10.0, 0),
+                (0.5, 8, 0.49, 10.0, 2),
+                (1.0, 1, 0.5, 100.0, 0),
+                (1.0, 4, 0.85, 25.0, 0),
+                (1.0, 8, 0.85, 25.0, 4),
+            ]
+        ])
+        apply_style()
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = render_concurrency(
+                frame,
+                {"id": "concurrency", "title": "Concurrency",
+                 "require_constant": ["policy", "server_slots"]},
+                Path(tmp) / "concurrency",
                 ["png"],
             )
             self.assertEqual(len(paths), 1)
