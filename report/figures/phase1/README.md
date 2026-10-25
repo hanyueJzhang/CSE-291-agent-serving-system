@@ -1,12 +1,13 @@
 # Phase 1 figure guide
 
-These three figures answer different baseline questions:
+These four main figures answer different baseline questions:
 
 | Figure | Question |
 |---|---|
 | [Capacity](capacity.pdf) | How much offered work can the fixed FIFO system sustain? |
 | [Concurrency](concurrency.pdf) | How many model requests should FIFO admit at once? |
 | [Context growth](context_growth.pdf) | How does agent context size affect KV pressure and completed work? |
+| [Tool delay](tool_delay.pdf) | Does an agent's context survive while it waits for tools? |
 
 ## 1. Capacity and saturation
 
@@ -32,8 +33,20 @@ These three figures answer different baseline questions:
 
 **Conclusion:** Concurrency alone is not enough for admission decisions. Larger retained contexts consume more KV-slot capacity, reduce completed work, and increase tail latency, motivating context- or memory-aware admission.
 
+## 4. Tool wait duration
+
+**Why we need it:** Agent tasks release the model while using tools, then return with a dependent follow-up request. Phase 1 must determine whether context remains reusable during these idle periods.
+
+**What it shows:** Only the fixed delay of each tool call changes (0.5, 2, 5, or 10 s). As the delay grows, follow-up prompt tokens served from cache fall from about 41% to 4%, while follow-up prefill P50 rises from about 106 ms to 304 ms.
+
+**Conclusion:** Longer tool waits make an agent's previous context less likely to survive in the server slots. Prioritizing ready follow-up steps or otherwise considering context reuse may reduce repeated prompt processing.
+
+## Supporting result: host prompt cache
+
+[Host prompt cache](host_cache.pdf) is supporting or appendix evidence rather than a core figure. Additional host cache improves follow-up reuse and prefill time at moderate load, but the measured end-to-end task throughput and P95 latency do not materially improve. An 8 GiB cache also raises peak server RSS from about 0.8 GiB to 8.8 GiB. This result helps justify focusing Phase 2 on admission and scheduling instead of a large fixed host-cache allocation.
+
 ## Overall Phase 1 finding
 
-The fixed FIFO baseline works best when scheduler concurrency matches server parallelism, but it still degrades when offered load exceeds capacity or when agent contexts become large. These measurements motivate a Phase 2 policy that considers both current load and estimated context footprint.
+The fixed FIFO baseline works best when scheduler concurrency matches server parallelism, but it still degrades when offered load exceeds capacity, when agent contexts become large, or when tool waits prevent follow-up context reuse. These measurements motivate a Phase 2 policy that considers current load, estimated context footprint, and whether a ready step can reuse retained context.
 
 The numerical results are specific to the measured workload, model, hardware, and llama.cpp configuration; they should not be treated as universal capacity limits.

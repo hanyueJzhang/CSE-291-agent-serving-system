@@ -80,7 +80,7 @@
     {
       "id": "tool_delay",
       "type": "tool_delay",
-      "title": "Tool waits reduce follow-up prompt reuse",
+      "title": "Effect of tool wait duration on context reuse",
       "runs": [
         "results/phase1_tooldelay/tool_0.5s",
         "results/phase1_tooldelay/tool_2s",
