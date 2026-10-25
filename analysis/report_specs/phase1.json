@@ -58,7 +58,7 @@
     {
       "id": "context_growth",
       "type": "context_growth",
-      "title": "Context growth increases KV pressure and latency",
+      "title": "Effect of initial context size",
       "runs": [
         "results/phase1_context/p512",
         "results/phase1_context/p1024",
@@ -102,7 +102,7 @@
     {
       "id": "host_cache",
       "type": "host_cache",
-      "title": "Host prompt-cache memory/performance tradeoff",
+      "title": "Host prompt-cache effectiveness under task load",
       "runs": [
         "results/phase1_baseline/rate_c4_r1",
         "results/phase1_baseline/cram2g_r1",
