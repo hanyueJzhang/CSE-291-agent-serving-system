@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "manifest": "analysis/report_specs/phase1_runs.json",
+  "output_dir": "report/figures/phase1",
+  "formats": ["png", "pdf"],
+  "figures": [
+    {
+      "id": "capacity",
+      "type": "capacity",
+      "title": "FIFO capacity and saturation",
+      "runs": [
+        "results/phase1_baseline/rate_c4_r0.5",
+        "results/phase1_baseline/rate_c4_r0.6",
+        "results/phase1_baseline/rate_c4_r0.7",
+        "results/phase1_baseline/rate_c4_r0.8",
+        "results/phase1_baseline/rate_c4_r0.9",
+        "results/phase1_baseline/rate_c4_r1",
+        "results/phase1_baseline/rate_c4_r1.5",
+        "results/phase1_baseline/rate_c4_r4"
+      ],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "concurrency",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt",
+        "cache_ram_mb"
+      ]
+    },
+    {
+      "id": "concurrency",
+      "type": "concurrency",
+      "title": "Request concurrency versus server parallelism",
+      "runs": [
+        "results/phase1_concurrency/c1_r0.5",
+        "results/phase1_concurrency/c1_r1",
+        "results/phase1_concurrency/c2_r0.5",
+        "results/phase1_concurrency/c2_r1",
+        "results/phase1_concurrency/c3_r0.5",
+        "results/phase1_concurrency/c3_r1",
+        "results/phase1_concurrency/c4_r0.5",
+        "results/phase1_concurrency/c4_r1",
+        "results/phase1_concurrency/c8_server_queue_r0.5",
+        "results/phase1_concurrency/c8_server_queue_r1",
+        "results/phase1_concurrency/p8_c8_r0.5",
+        "results/phase1_concurrency/p8_c8_r1"
+      ],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "seed",
+        "ctx_per_slot",
+        "cache_prompt",
+        "cache_ram_mb"
+      ]
+    },
+    {
+      "id": "context_growth",
+      "type": "context_growth",
+      "title": "Context growth increases KV pressure and latency",
+      "runs": [
+        "results/phase1_context/p512",
+        "results/phase1_context/p1024",
+        "results/phase1_context/p2048",
+        "results/phase1_context/p4096"
+      ],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "concurrency",
+        "rate_per_s",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt",
+        "cache_ram_mb"
+      ]
+    },
+    {
+      "id": "tool_delay",
+      "type": "tool_delay",
+      "title": "Tool waits reduce follow-up prompt reuse",
+      "runs": [
+        "results/phase1_tooldelay/tool_0.5s",
+        "results/phase1_tooldelay/tool_2s",
+        "results/phase1_tooldelay/tool_5s",
+        "results/phase1_tooldelay/tool_10s"
+      ],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "concurrency",
+        "rate_per_s",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt",
+        "cache_ram_mb"
+      ]
+    },
+    {
+      "id": "host_cache",
+      "type": "host_cache",
+      "title": "Host prompt-cache memory/performance tradeoff",
+      "runs": [
+        "results/phase1_baseline/rate_c4_r1",
+        "results/phase1_baseline/cram2g_r1",
+        "results/phase1_baseline/cram8g_r1",
+        "results/phase1_baseline/rate_c4_r4",
+        "results/phase1_baseline/cram2g_r4",
+        "results/phase1_baseline/cram8g_r4"
+      ],
+      "require_constant": [
+        "workload",
+        "scheduler",
+        "concurrency",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt"
+      ]
+    }
+  ]
+}

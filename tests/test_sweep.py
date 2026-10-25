@@ -30,11 +30,13 @@ class SweepTests(unittest.TestCase):
         self.port = free_port()
         self.plan = {
             "name": "tiny_sweep",
+            "dimensions": {"phase": 1, "policy": "fifo"},
             "server": {"SERVER_PORT": self.port, "PARALLEL": 2, "CTX": 4096},
             "args": ["--workload", str(workload), "--skip-env-check", "--sample-interval-s", "0.01"],
             "runs": [
                 {"run_id": "a", "args": ["--concurrency", "1"]},
-                {"run_id": "b", "server": {"PARALLEL": 3, "EXTRA_ARGS": "--cache-ram 0"},
+                {"run_id": "b", "dimensions": {"variant": "b"},
+                 "server": {"PARALLEL": 3, "EXTRA_ARGS": "--cache-ram 0"},
                  "args": ["--concurrency", "2", "--no-cache-prompt"]},
             ],
         }
@@ -66,6 +68,8 @@ class SweepTests(unittest.TestCase):
         self.assertEqual(runs[1]["server"], {"SERVER_PORT": str(self.port), "PARALLEL": "3",
                                              "CTX": "4096", "EXTRA_ARGS": "--cache-ram 0"})
         self.assertEqual(runs[1]["args"][-3:], ["--concurrency", "2", "--no-cache-prompt"])
+        self.assertEqual(runs[0]["dimensions"], {"phase": 1, "policy": "fifo"})
+        self.assertEqual(runs[1]["dimensions"], {"phase": 1, "policy": "fifo", "variant": "b"})
 
     def test_rejects_duplicate_run_ids(self):
         self.plan["runs"].append({"run_id": "a"})
@@ -87,6 +91,7 @@ class SweepTests(unittest.TestCase):
         config_b = json.loads((out / "b" / "run_config.json").read_text())
         self.assertEqual(config_b["server"]["total_slots"], 3)
         self.assertFalse(config_b["client"]["cache_prompt"])
+        self.assertEqual(config_b["dimensions"], {"phase": 1, "policy": "fifo", "variant": "b"})
 
         log = [json.loads(line) for line in (out / "sweep_log.jsonl").read_text().splitlines()]
         self.assertEqual([(r["run_id"], r["status"]) for r in log], [("a", "ok"), ("b", "ok")])
@@ -94,6 +99,7 @@ class SweepTests(unittest.TestCase):
             rows = list(csv.DictReader(f))
         self.assertEqual([(r["run_id"], r["concurrency"], r["server_slots"]) for r in rows],
                          [("a", "1", "2"), ("b", "2", "3")])
+        self.assertEqual((rows[0]["dim_phase"], rows[1]["dim_variant"]), ("1", "b"))
 
         # rerun: both done, nothing restarted
         self.assertEqual(self.sweep(), 0)

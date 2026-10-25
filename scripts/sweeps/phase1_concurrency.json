@@ -1,6 +1,12 @@
 {
   "_comment": "Find the best fixed concurrency for FIFO on example_mix. c1-c4 on the 8192/4 server; p8_c8 uses 8 slots of 2048 (16384/8) so 8 requests really run at once; c8_server_queue sends 8 to 4 slots, so 4 wait inside llama-server where our queue_s does not see them.",
   "name": "phase1_concurrency",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "concurrency",
+    "workload_family": "example_mix",
+    "cache_ram_mb": 0
+  },
   "server": {
     "CTX": 8192,
     "PARALLEL": 4,

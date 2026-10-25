@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "runs": {
+    "results/phase1_baseline/rate_c4_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r0.6": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r0.7": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r0.8": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r0.9": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r1.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/rate_c4_r4": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_baseline/cram2g_r1": {
+      "phase": 1,
+      "cache_ram_mb": 2048
+    },
+    "results/phase1_baseline/cram2g_r4": {
+      "phase": 1,
+      "cache_ram_mb": 2048
+    },
+    "results/phase1_baseline/cram8g_r1": {
+      "phase": 1,
+      "cache_ram_mb": 8192
+    },
+    "results/phase1_baseline/cram8g_r4": {
+      "phase": 1,
+      "cache_ram_mb": 8192
+    },
+    "results/phase1_concurrency/c1_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c1_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c2_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c2_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c3_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c3_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c4_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c4_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c8_server_queue_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/c8_server_queue_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/p8_c8_r0.5": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_concurrency/p8_c8_r1": {
+      "phase": 1,
+      "cache_ram_mb": 0
+    },
+    "results/phase1_context/p512": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "context_agent_3step",
+      "initial_prompt_tokens": 512
+    },
+    "results/phase1_context/p1024": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "context_agent_3step",
+      "initial_prompt_tokens": 1024
+    },
+    "results/phase1_context/p2048": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "context_agent_3step",
+      "initial_prompt_tokens": 2048
+    },
+    "results/phase1_context/p4096": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "context_agent_3step",
+      "initial_prompt_tokens": 4096
+    },
+    "results/phase1_tooldelay/tool_0.5s": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "tooldelay_example_mix",
+      "tool_delay_s": 0.5
+    },
+    "results/phase1_tooldelay/tool_2s": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "tooldelay_example_mix",
+      "tool_delay_s": 2
+    },
+    "results/phase1_tooldelay/tool_5s": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "tooldelay_example_mix",
+      "tool_delay_s": 5
+    },
+    "results/phase1_tooldelay/tool_10s": {
+      "phase": 1,
+      "cache_ram_mb": 0,
+      "workload_family": "tooldelay_example_mix",
+      "tool_delay_s": 10
+    }
+  }
+}

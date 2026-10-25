@@ -1,6 +1,12 @@
 {
   "_comment": "Tool-delay sweep: example_mix with tool calls fixed at 0.5-10 s, near the knee (rate 0.8, concurrency 4) on 8192/4. Shows how idle time between agent steps affects follow-up KV reuse.",
   "name": "phase1_tooldelay",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "tool_delay",
+    "workload_family": "tooldelay_example_mix",
+    "cache_ram_mb": 0
+  },
   "server": {
     "CTX": 8192,
     "PARALLEL": 4,
@@ -19,6 +25,7 @@
   "runs": [
     {
       "run_id": "tool_0.5s",
+      "dimensions": { "tool_delay_s": 0.5 },
       "args": [
         "--workload",
         "workload/tasks/tooldelay_0.5s.json"
@@ -26,6 +33,7 @@
     },
     {
       "run_id": "tool_2s",
+      "dimensions": { "tool_delay_s": 2 },
       "args": [
         "--workload",
         "workload/tasks/tooldelay_2s.json"
@@ -33,6 +41,7 @@
     },
     {
       "run_id": "tool_5s",
+      "dimensions": { "tool_delay_s": 5 },
       "args": [
         "--workload",
         "workload/tasks/tooldelay_5s.json"
@@ -40,6 +49,7 @@
     },
     {
       "run_id": "tool_10s",
+      "dimensions": { "tool_delay_s": 10 },
       "args": [
         "--workload",
         "workload/tasks/tooldelay_10s.json"

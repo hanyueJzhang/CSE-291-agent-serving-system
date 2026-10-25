@@ -204,6 +204,7 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "run_id": config.get("run_id", run["dir"].name),
+        "dimensions": dict(config.get("dimensions") or {}),
         "scheduler": scheduler.get("name"),
         "concurrency": scheduler.get("max_concurrency"),
         "workload": workload.get("name"),
@@ -367,11 +368,15 @@ TABLE_COLUMNS = [
     ("output_tokens_per_s", lambda s: s["throughput"]["output_tokens_per_s"]),
     ("uncached_prompt_tokens_per_s", lambda s: s["throughput"]["uncached_prompt_tokens_per_s"]),
     ("ttft_p50_s", lambda s: s["requests"].get("ttft_s", {}).get("p50")),
+    ("ttft_p95_s", lambda s: s["requests"].get("ttft_s", {}).get("p95")),
     ("ttft_p99_s", lambda s: s["requests"].get("ttft_s", {}).get("p99")),
+    ("queue_p95_s", lambda s: s["requests"].get("queue_s", {}).get("p95")),
     ("queue_p99_s", lambda s: s["requests"].get("queue_s", {}).get("p99")),
     ("task_latency_p50_s", lambda s: s["tasks"]["latency_s"]["p50"]),
+    ("task_latency_p95_s", lambda s: s["tasks"]["latency_s"]["p95"]),
     ("task_latency_p99_s", lambda s: s["tasks"]["latency_s"]["p99"]),
     ("task_latency_excl_tool_p50_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p50"]),
+    ("task_latency_excl_tool_p95_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p95"]),
     ("task_latency_excl_tool_p99_s", lambda s: s["tasks"]["latency_excl_tool_s"]["p99"]),
     ("decode_ms_per_token_p50", lambda s: s["requests"].get("decode_ms_per_token", {}).get("p50")),
     ("cached_ratio_followup", lambda s: s["prompt_cache"]["cached_ratio_followup_steps"]),
@@ -385,12 +390,21 @@ TABLE_COLUMNS = [
 
 
 def table_rows(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [{name: get(s) for name, get in TABLE_COLUMNS} for s in summaries]
+    dimension_names = sorted({key for summary in summaries for key in (summary.get("dimensions") or {})})
+    rows = []
+    for summary in summaries:
+        row = {name: get(summary) for name, get in TABLE_COLUMNS}
+        dimensions = summary.get("dimensions") or {}
+        row.update({f"dim_{name}": dimensions.get(name) for name in dimension_names})
+        rows.append(row)
+    return rows
 
 
 def write_table(path: Path, summaries: list[dict[str, Any]]) -> None:
+    dimension_names = sorted({key for summary in summaries for key in (summary.get("dimensions") or {})})
+    fieldnames = [name for name, _ in TABLE_COLUMNS] + [f"dim_{name}" for name in dimension_names]
     with Path(path).open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=[name for name, _ in TABLE_COLUMNS])
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         for row in table_rows(summaries):
             writer.writerow({k: ("" if v is None else v) for k, v in row.items()})
