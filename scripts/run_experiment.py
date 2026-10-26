@@ -33,7 +33,7 @@ from typing import Any
 import aiohttp
 
 from scheduler import FIFOScheduler
-from workload.generator import generate_tasks, load_workload
+from workload.generator import estimate_peak_context, generate_tasks, load_workload
 from workload.llama_client import LlamaClient
 from workload.metrics import (
     MEMORY_COLUMNS, REQUEST_COLUMNS, TASK_COLUMNS,
@@ -44,10 +44,6 @@ from workload.sampler import MemorySampler, find_server_process
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEDULERS = {"fifo": FIFOScheduler}
-
-# Rough chat-template overhead per message, for the context-fit warning only.
-_TEMPLATE_TOKENS_PER_MESSAGE = 8
-_TOOL_RESULT_TOKENS = 20
 
 
 class RunClock:
@@ -105,21 +101,6 @@ def salt_prompts(tasks: list[dict[str, Any]], salt: str) -> None:
         for step in task["steps"]:
             if step["kind"] == "llm":
                 step["prompt"] = f"{salt} {step['prompt']}"
-
-
-def estimate_peak_context(task: dict[str, Any]) -> int:
-    """Approximate the largest context (prompt + output) any request of the task needs."""
-    peak = context = 0
-    for step in task["steps"]:
-        if step["kind"] == "tool":
-            context += _TOOL_RESULT_TOKENS + _TEMPLATE_TOKENS_PER_MESSAGE
-            continue
-        if not step.get("carry_context", False):
-            context = 0
-        context += step["prompt_tokens"] + _TEMPLATE_TOKENS_PER_MESSAGE
-        peak = max(peak, context + step["max_output_tokens"])
-        context += step["max_output_tokens"] + _TEMPLATE_TOKENS_PER_MESSAGE
-    return peak
 
 
 # ---- environment and server ------------------------------------------------------
