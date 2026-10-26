@@ -39,10 +39,10 @@ the long requests the filter drops are mostly unique blocks.
 ```bash
 python -m workload.traces.mooncake workload/tasks/mooncake_w1.json --fraction 0.1   # dry run
 python -m workload.traces.check_words --url http://localhost:8080                  # needs a running server
-python -m scripts.run_experiment --workload workload/tasks/mooncake_w1.json --concurrency 4 --num-tasks 550
+python -m scripts.sweep scripts/sweeps/mooncake_calib.json --dry-run               # show what will run
+tmux new -s sweep 'python -m scripts.sweep scripts/sweeps/mooncake_calib.json'
 ```
 
-Trace runs need `CTX=24576 PARALLEL=4` (6144 tokens per slot).
 
 ## Phase 2 TODO
 
