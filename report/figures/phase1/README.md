@@ -1,5 +1,30 @@
 # Phase 1 figure guide
 
+## Reproduce the complete figure set
+
+Run the reporting CLI from the repository root:
+
+```bash
+python -m analysis.reporting.cli analysis/report_specs/phase1.json
+```
+
+The report specification selects the result runs, validates the controlled
+variables, and generates both PNG and PDF versions of all five figures in this
+directory:
+
+```text
+capacity.{png,pdf}
+concurrency.{png,pdf}
+context_growth.{png,pdf}
+tool_delay.{png,pdf}
+host_cache.{png,pdf}
+```
+
+The legacy manifest at `analysis/report_specs/phase1_runs.json` supplies
+experiment dimensions that the original Phase 1 runs did not record. Future
+runs preserve these dimensions directly in `run_config.json`, `summary.json`,
+and `sweep.csv`, so their report specifications do not need filename parsing.
+
 These four main figures answer different baseline questions:
 
 | Figure | Question |
