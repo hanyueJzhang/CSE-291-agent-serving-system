@@ -43,6 +43,31 @@ python -m scripts.sweep scripts/sweeps/mooncake_calib.json --dry-run            
 tmux new -s sweep 'python -m scripts.sweep scripts/sweeps/mooncake_calib.json'
 ```
 
+## Progress
+
+Done:
+
+- [x] Generator and workloads `mooncake_w{1,2,3}.json`.
+- [x] `check_words` on the 3080 server (24576/4): 1024 words, 200 seams, 50 prompts, OK.
+- [x] Dry run of the calibration set (W1, N=550):
+  - 5462 requests in the window, 4866 fit at 6144 tok/slot (89.1%).
+  - 550 tasks in 488 families: 39 have more than one member, the largest has 7.
+  - Mean rate 0.611 tasks/s, 27–49 tasks per minute.
+  - step0 prompt p50 1547 / p99 3980, output p50 25 / p99 655, peak context p50 2658 / max 5818.
+  - Theoretical step0 prefix hit: 63.9% of blocks, 67.1% of tokens.
+
+To do:
+
+- [ ] c=1 check: run W1 with `--concurrency 1 --num-tasks 20` and compare step0
+      `cached_tokens` with the dry run's theoretical hit. Expect a bit less than
+      theory, because there are 4 slots instead of an unbounded cache, plus about
+      41 template/salt tokens per request.
+- [ ] Calibration run `mooncake_calib`. X = `tasks/s` of `w1_fifo_c4_n550`,
+      expected about 0.33–0.46. Also check there are no failures or timeouts.
+- [ ] Set the load levels N = 0.5X, 0.75X and 0.95X × 900. Write the FIFO plan for
+      W1/W2/W3 × 3 loads, all at 24576/4 with `CACHE_RAM=0`.
+- [ ] Run it, then summarize it into `sweep.csv`.
+
 
 ## Phase 2 TODO
 
