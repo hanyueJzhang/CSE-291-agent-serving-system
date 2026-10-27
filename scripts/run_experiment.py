@@ -71,6 +71,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--num-tasks", type=int, help="override arrival.num_tasks")
     p.add_argument("--rate", type=float, help="override arrival.rate_per_s")
     p.add_argument("--seed", type=int, help="override the workload seed")
+    p.add_argument(
+        "--dimensions-json",
+        default="{}",
+        help="JSON object of experiment dimensions recorded in run_config.json",
+    )
     # Client
     p.add_argument("--timeout-s", type=float, default=300.0, help="per-request timeout, from dispatch")
     p.add_argument("--no-ignore-eos", action="store_true", help="let the model stop before max_tokens")
@@ -81,6 +86,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--ready-timeout-s", type=float, default=60.0)
     p.add_argument("--skip-env-check", action="store_true", help="don't run setup/check_env.sh")
     return p.parse_args(argv)
+
+
+def parse_dimensions(raw: str) -> dict[str, Any]:
+    """Parse self-describing experiment dimensions passed by a sweep plan."""
+    try:
+        dimensions = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"--dimensions-json is not valid JSON: {exc}") from exc
+    if not isinstance(dimensions, dict):
+        raise ValueError("--dimensions-json must contain a JSON object")
+    invalid = [key for key, value in dimensions.items()
+               if not isinstance(key, str) or isinstance(value, (dict, list))]
+    if invalid:
+        raise ValueError(
+            "experiment dimensions must have string keys and scalar JSON values; "
+            f"invalid keys: {invalid}"
+        )
+    return dimensions
 
 
 # ---- workload ----------------------------------------------------------------
@@ -174,6 +197,7 @@ async def server_info(base_url: str) -> dict[str, Any]:
 
 async def run_experiment(args: argparse.Namespace) -> Path:
     workload = build_workload(args)
+    dimensions = parse_dimensions(args.dimensions_json)
     tasks = generate_tasks(workload)
     salt = f"[run {secrets.token_hex(4)}]"
     salt_prompts(tasks, salt)
@@ -236,6 +260,7 @@ async def run_experiment(args: argparse.Namespace) -> Path:
             "argv": sys.argv,
             "workload_file": str(args.workload),
             "workload": workload,
+            "dimensions": dimensions,
             "num_tasks": len(tasks),
             "prompt_salt": salt,
             "scheduler": None,

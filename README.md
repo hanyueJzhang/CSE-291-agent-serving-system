@@ -45,6 +45,21 @@ curl localhost:8080/v1/chat/completions -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"hi"}]}'
 ```
 
+## Phase 1 report figures
+
+Generate all comparative Phase 1 figures from the checked-in summaries:
+
+```bash
+python -m analysis.reporting.cli analysis/report_specs/phase1.json
+```
+
+PNG and PDF outputs are written to `report/figures/phase1/`. The report loader
+uses `summary.json` for measurements and `analysis/report_specs/phase1_runs.json`
+only to fill dimensions that older runs did not record. New sweep plans should
+put explicit scalar metadata in their `dimensions` objects; the sweep runner
+preserves it in `run_config.json`, `summary.json`, and `dim_*` columns of
+`sweep.csv`.
+
 ## Keeping environments consistent
 
 Only the machine that produces reported numbers must match exactly; dev machines just need to run the code.

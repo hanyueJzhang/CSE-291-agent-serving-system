@@ -19,17 +19,21 @@ Plan file (JSON):
     {
       "name": "phase1_baseline",
       "server": {"CTX": 8192, "PARALLEL": 4},          # defaults for every run
+      "dimensions": {"phase": 1, "policy": "fifo"},   # recorded metadata
       "args": ["--workload", "workload/tasks/example_mix.json"],
       "runs": [
         {"run_id": "rate_c4_r1", "args": ["--concurrency", "4", "--rate", "1"]},
         {"run_id": "c16", "server": {"CTX": 32768, "PARALLEL": 16},
+         "dimensions": {"variant": "large"},
          "args": ["--concurrency", "16"]}
       ]
     }
 
 "server" values become environment variables of setup/start_server.sh, which
 reads CTX, PARALLEL, NGL, SERVER_PORT, CACHE_RAM (MiB, 0 = off) and EXTRA_ARGS.
-A run's "server" is merged over the plan's; its "args" follow the plan's.
+A run's "server" and "dimensions" are merged over the plan's; its "args"
+follow the plan's. Dimensions must be scalar JSON values and are preserved in
+run_config.json, summary.json and sweep.csv.
 """
 
 from __future__ import annotations
@@ -77,6 +81,20 @@ def load_plan(path: str | Path) -> dict[str, Any]:
     for run_id in run_ids:
         if "/" in run_id or run_id.startswith("."):
             raise ValueError(f"{path}: run_id {run_id!r} must be a plain folder name")
+    dimension_scopes = [("plan", plan.get("dimensions", {}))]
+    dimension_scopes.extend(
+        (f"run {run['run_id']}", run.get("dimensions", {})) for run in plan["runs"]
+    )
+    for label, dimensions in dimension_scopes:
+        if not isinstance(dimensions, dict):
+            raise ValueError(f"{path}: {label} dimensions must be an object")
+        invalid = [key for key, value in dimensions.items()
+                   if not isinstance(key, str) or isinstance(value, (dict, list))]
+        if invalid:
+            raise ValueError(
+                f"{path}: {label} dimensions need string keys and scalar JSON values; "
+                f"invalid keys: {invalid}"
+            )
     return plan
 
 
@@ -85,10 +103,12 @@ def expand_runs(plan: dict[str, Any]) -> list[dict[str, Any]]:
     runs = []
     for run in plan["runs"]:
         server = {**plan.get("server", {}), **run.get("server", {})}
+        dimensions = {**plan.get("dimensions", {}), **run.get("dimensions", {})}
         runs.append({
             "run_id": run["run_id"],
             "server": {k: str(v) for k, v in server.items()},
             "args": [str(a) for a in [*plan.get("args", []), *run.get("args", [])]],
+            "dimensions": dimensions,
         })
     return runs
 
@@ -202,7 +222,8 @@ def run_sweep(args: argparse.Namespace) -> int:
             server = " ".join(f"{k}={v}" for k, v in run["server"].items())
             print(f"{run['run_id']}:\n  server: {server} {args.server_cmd}\n"
                   f"  run:    python -m scripts.run_experiment {' '.join(run['args'])} "
-                  f"--run-id {run['run_id']} --results-dir {out_dir}")
+                  f"--run-id {run['run_id']} --results-dir {out_dir}\n"
+                  f"  dimensions: {json.dumps(run['dimensions'], sort_keys=True)}")
         return 0
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -247,6 +268,7 @@ def run_one(run: dict[str, Any], i: int, n: int, out_dir: Path,
 
     port = int(run["server"].get("SERVER_PORT", DEFAULT_PORT))
     record: dict[str, Any] = {"run_id": run_id, "server": run["server"], "args": run["args"],
+                              "dimensions": run["dimensions"],
                               "started_at": datetime.now().astimezone().isoformat()}
     t0 = time.monotonic()
 
@@ -266,7 +288,8 @@ def run_one(run: dict[str, Any], i: int, n: int, out_dir: Path,
                 log(f"[{i}/{n}] {run_id}: server ready, running experiment")
                 cmd = [sys.executable, "-m", "scripts.run_experiment", *run["args"],
                        "--run-id", run_id, "--results-dir", str(out_dir),
-                       "--url", f"http://localhost:{port}"]
+                       "--url", f"http://localhost:{port}",
+                       "--dimensions-json", json.dumps(run["dimensions"], separators=(",", ":"))]
                 code = subprocess.run(cmd, cwd=REPO_ROOT).returncode
                 status = "ok" if code == 0 and (run_dir / "requests.csv").exists() else "failed"
                 why = None if status == "ok" else f"run_experiment exited with code {code}"

@@ -1,11 +1,12 @@
 {
   "_comment": "Check the 16384/8 server (still 2048 tokens per slot): GPU memory, server RSS, and whether 8 slots keep agent follow-up KV at overload. Compare with the phase1 test run (8192/4) rate_c4_r1 and rate_c4_r4. p8_r4_cram2g caps the host-RAM prompt cache at 2 GiB.",
   "name": "memtest_p8",
+  "dimensions": { "phase": 1, "experiment": "server_memory", "workload_family": "example_mix" },
   "server": { "CTX": 16384, "PARALLEL": 8 },
   "args": ["--workload", "workload/tasks/example_mix.json", "--scheduler", "fifo", "--concurrency", "4", "--num-tasks", "200"],
   "runs": [
-    { "run_id": "p8_r1",        "args": ["--rate", "1"] },
-    { "run_id": "p8_r4",        "args": ["--rate", "4"] },
-    { "run_id": "p8_r4_cram2g", "server": { "EXTRA_ARGS": "--cache-ram 2048" }, "args": ["--rate", "4"] }
+    { "run_id": "p8_r1",        "dimensions": { "cache_ram_mb": 0 }, "args": ["--rate", "1"] },
+    { "run_id": "p8_r4",        "dimensions": { "cache_ram_mb": 0 }, "args": ["--rate", "4"] },
+    { "run_id": "p8_r4_cram2g", "dimensions": { "cache_ram_mb": 2048 }, "server": { "EXTRA_ARGS": "--cache-ram 2048" }, "args": ["--rate", "4"] }
   ]
 }

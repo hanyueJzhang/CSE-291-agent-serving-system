@@ -47,7 +47,8 @@ MEMORY = [
 CONFIG = {"run_id": "r", "scheduler": {"name": "fifo", "max_concurrency": 4},
           "client": {"cache_prompt": True},
           "workload": {"name": "mix", "seed": 1, "arrival": {"rate_per_s": 0.5}},
-          "server": {"total_slots": 4, "n_ctx_per_slot": 2048}, "warnings": ["w1"]}
+          "server": {"total_slots": 4, "n_ctx_per_slot": 2048}, "warnings": ["w1"],
+          "dimensions": {"phase": 1, "policy": "fifo"}}
 
 
 def write_run(run_dir):
@@ -146,6 +147,7 @@ class SummarizeRunTests(unittest.TestCase):
         self.assertEqual(s["memory"]["server_rss_peak_mb"], 1200)
         self.assertEqual(s["memory"]["server_requests_deferred_max"], 0)
         self.assertEqual((s["scheduler"], s["concurrency"], s["rate_per_s"]), ("fifo", 4, 0.5))
+        self.assertEqual(s["dimensions"], {"phase": 1, "policy": "fifo"})
         self.assertIs(s["cache_prompt"], True)
         self.assertEqual(s["warnings"], ["w1"])
 
@@ -160,6 +162,7 @@ class SummarizeRunTests(unittest.TestCase):
         self.assertEqual((rows[0]["tasks_failed"], rows[0]["tasks_timeout"]), ("1", "1"))
         self.assertEqual((rows[0]["seed"], rows[0]["ctx_per_slot"]), ("1", "2048"))
         self.assertEqual(float(rows[0]["prefill_followup_p50_ms"]), 30.0)
+        self.assertEqual((rows[0]["dim_phase"], rows[0]["dim_policy"]), ("1", "fifo"))
 
 
 class CliTests(unittest.TestCase):
@@ -197,6 +200,7 @@ class RealRunTests(unittest.IsolatedAsyncioTestCase):
                 out_dir = await run_experiment(parse_args([
                     "--workload", str(workload), "--concurrency", "1", "--url", fake.url,
                     "--results-dir", tmp, "--run-id", "r1",
+                    "--dimensions-json", '{"phase":1,"policy":"fifo"}',
                     "--sample-interval-s", "0.01", "--skip-env-check",
                 ]))
             finally:
@@ -205,6 +209,7 @@ class RealRunTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(s["counts"]["tasks_ok"], 4)
         self.assertEqual((s["scheduler"], s["concurrency"]), ("fifo", 1))
+        self.assertEqual(s["dimensions"], {"phase": 1, "policy": "fifo"})
         for key in ("queue_s", "ttft_s", "server_ttft_s", "e2e_s"):
             self.assertEqual(s["requests"][key]["n"], s["counts"]["requests_ok"])
             self.assertGreaterEqual(s["requests"][key]["p50"], 0.0)

@@ -1,6 +1,12 @@
 {
   "_comment": "Context-size sweep: agent_3step only, first prompt 512-4096 tokens, on a 24576/4 server (6144 tokens per slot) held fixed for all runs so only context changes. Rate 0.4 tasks/s, concurrency 4.",
   "name": "phase1_context",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "context_growth",
+    "workload_family": "context_agent_3step",
+    "cache_ram_mb": 0
+  },
   "server": {
     "CTX": 24576,
     "PARALLEL": 4,
@@ -19,6 +25,7 @@
   "runs": [
     {
       "run_id": "p512",
+      "dimensions": { "initial_prompt_tokens": 512 },
       "args": [
         "--workload",
         "workload/tasks/ctx_agent_p512.json"
@@ -26,6 +33,7 @@
     },
     {
       "run_id": "p1024",
+      "dimensions": { "initial_prompt_tokens": 1024 },
       "args": [
         "--workload",
         "workload/tasks/ctx_agent_p1024.json"
@@ -33,6 +41,7 @@
     },
     {
       "run_id": "p2048",
+      "dimensions": { "initial_prompt_tokens": 2048 },
       "args": [
         "--workload",
         "workload/tasks/ctx_agent_p2048.json"
@@ -40,6 +49,7 @@
     },
     {
       "run_id": "p4096",
+      "dimensions": { "initial_prompt_tokens": 4096 },
       "args": [
         "--workload",
         "workload/tasks/ctx_agent_p4096.json"

@@ -7,6 +7,9 @@ Every run writes one folder: `results/<run_id>/` containing
   - **Server:** slots, context per slot, model, build, launch command (as reported by llama-server).
   - **Code and machine:** repo commit, `setup/config.env`, `setup/check_env.sh` output.
   - **Run:** start/end time, status, `prompt_salt`.
+  - **Dimensions:** explicit scalar experiment metadata such as phase, policy,
+    initial prompt size, tool delay or memory budget. Sweep-level dimensions
+    are merged with per-run overrides.
   - **Check before using the data:** `warnings`, `sampler_notes`.
 - `requests.csv`: one row per LLM request (agent step).
 - `tasks.csv`: one row per agent task.

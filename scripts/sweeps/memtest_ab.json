@@ -1,6 +1,7 @@
 {
   "_comment": "Back-to-back A/B of 8192/4 vs 16384/8 (both 2048 tokens per slot) at rate 1, to tell whether the slower decode in memtest_p8 comes from the server config or from the machine at that time.",
   "name": "memtest_ab",
+  "dimensions": { "phase": 1, "experiment": "server_memory_ab", "workload_family": "example_mix", "cache_ram_mb": 2048 },
   "server": { "EXTRA_ARGS": "--cache-ram 2048" },
   "args": ["--workload", "workload/tasks/example_mix.json", "--scheduler", "fifo", "--concurrency", "4", "--rate", "1", "--num-tasks", "100"],
   "runs": [
