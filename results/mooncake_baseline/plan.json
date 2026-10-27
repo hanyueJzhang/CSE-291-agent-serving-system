@@ -1,0 +1,122 @@
+{
+  "_comment": "Mooncake FIFO baseline. X = 0.330 tasks/s saturated throughput from mooncake_calib (w1_fifo_c4_n550: 550/550 ok, makespan 1664 s). Load levels N = 0.5X, 0.75X, 0.95X times the 900 s window, on W1-W3 (the windows replace seeds). Two extra W1 runs with an 8 GiB host-RAM prompt cache. 6144 tokens per slot.",
+  "name": "mooncake_baseline",
+  "server": {
+    "CTX": 24576,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4"
+  ],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c4_l50",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "148"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l75",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "223"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282"
+      ]
+    },
+    {
+      "run_id": "w2_fifo_c4_l50",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w2.json",
+        "--num-tasks",
+        "148"
+      ]
+    },
+    {
+      "run_id": "w2_fifo_c4_l75",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w2.json",
+        "--num-tasks",
+        "223"
+      ]
+    },
+    {
+      "run_id": "w2_fifo_c4_l95",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w2.json",
+        "--num-tasks",
+        "282"
+      ]
+    },
+    {
+      "run_id": "w3_fifo_c4_l50",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "148"
+      ]
+    },
+    {
+      "run_id": "w3_fifo_c4_l75",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "223"
+      ]
+    },
+    {
+      "run_id": "w3_fifo_c4_l95",
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "282"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l75_cram8g",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "223"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram8g",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "_comment": "Mooncake toolagent trace, window W3 = [1800, 2700) s. One trace request = one task: step0 from the trace (input scaled 1/4, output kept), then the agent_3step follow-ups. num_tasks = target task count, reached by sampling whole prefix families (may overshoot by one family). Needs >= 6144 tokens per slot (CTX=24576 PARALLEL=4). See workload/traces/README.md.",
+  "name": "mooncake_w3",
+  "seed": 42,
+  "trace": {
+    "path": "workload/traces/toolagent_trace.jsonl",
+    "window_s": [
+      1800,
+      2700
+    ],
+    "fit_ctx_per_slot": 6144
+  },
+  "arrival": {
+    "process": "trace",
+    "num_tasks": 550
+  },
+  "task_types": [
+    {
+      "type": "mooncake_agent",
+      "weight": 1.0,
+      "steps": [
+        {
+          "kind": "llm",
+          "from_trace": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "uniform",
+            "min": 0.5,
+            "max": 2.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 128,
+          "carry_context": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "fixed",
+            "value": 1.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 256,
+          "carry_context": true
+        }
+      ]
+    }
+  ]
+}

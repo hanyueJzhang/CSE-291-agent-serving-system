@@ -1,0 +1,1 @@
+{"run_id": "w1_fifo_c4_n550", "server": {"CTX": "24576", "PARALLEL": "4", "CACHE_RAM": "0"}, "args": ["--workload", "workload/tasks/mooncake_w1.json", "--scheduler", "fifo", "--concurrency", "4", "--num-tasks", "550"], "started_at": "2026-10-25T23:44:13.190089-07:00", "status": "ok", "error": null, "duration_s": 1673.3}
