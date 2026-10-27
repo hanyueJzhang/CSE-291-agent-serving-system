@@ -1,0 +1,26 @@
+{
+  "_comment": "Load calibration for the Mooncake trace: W1, FIFO, concurrency 4, deliberately overloaded (N=550, about 0.61 tasks/s). The saturated throughput X sets the load levels N = 0.5X, 0.75X, 0.95X times 900 s. 6144 tokens per slot as in the Phase 1 context sweep.",
+  "name": "mooncake_calib",
+  "server": {
+    "CTX": 24576,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--workload",
+    "workload/tasks/mooncake_w1.json",
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4"
+  ],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c4_n550",
+      "args": [
+        "--num-tasks",
+        "550"
+      ]
+    }
+  ]
+}
