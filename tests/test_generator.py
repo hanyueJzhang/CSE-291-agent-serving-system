@@ -124,6 +124,20 @@ class TraceGeneratorTests(unittest.TestCase):
         for task in low:
             self.assertEqual(high_by_id.get(task["id"]), task)
 
+    def test_output_scale_keeps_tasks_and_divides_outputs(self):
+        base = workload_generator.generate_tasks(load_trace_workload(150))
+        workload = load_trace_workload(150)
+        workload["trace"]["output_scale"] = 4
+        scaled = workload_generator.generate_tasks(workload)
+
+        self.assertEqual([t["id"] for t in base], [t["id"] for t in scaled])
+        for b, s in zip(base, scaled):
+            self.assertEqual(b["arrival_s"], s["arrival_s"])
+            for bs, ss in zip(b["steps"], s["steps"]):
+                self.assertEqual(bs.get("prompt"), ss.get("prompt"))
+                if "max_output_tokens" in bs:
+                    self.assertEqual(ss["max_output_tokens"], max(1, -(-bs["max_output_tokens"] // 4)))
+
     def test_arrivals_fall_in_window(self):
         workload = load_trace_workload(10_000)
         start_s, end_s = workload["trace"]["window_s"]

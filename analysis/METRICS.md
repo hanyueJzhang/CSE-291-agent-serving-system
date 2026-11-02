@@ -100,6 +100,12 @@ Bounds how much GPU time re-processing displaced context costs. For each follow-
 | tasks failed / timeout | `tasks.csv` `status` = `failed` / `timeout`; a task ends at its first failed request |
 | top errors | the 3 most frequent `error` messages of failed requests (first 200 characters), with counts |
 
+### Context overflow (`analysis/overflow.py`)
+
+llama.cpp reserves KV at startup, so too much context never runs the GPU out of memory. It fails in one of two ways: the prompt does not fit the slot and the server rejects it (`status = error`), or prompt + output does not fit and generation stops early. The second still reports `status = ok`. With `ignore_eos` every complete response has exactly the requested length, so `overflow.py` regenerates the requested lengths from `run_config.json` and counts `output_tokens < requested` as truncated. All 46 Phase 1 runs show 0 truncated outputs.
+
+    python -m analysis.overflow results/phase1_overflow/*/
+
 ## Comparison table (`--table`)
 
 One row per run with the setup (scheduler, concurrency, rate, seed, server slots, context per slot, prompt cache on/off), the failure counts, and the main values above. The setup columns tell runs of a sweep apart without parsing `run_id`.

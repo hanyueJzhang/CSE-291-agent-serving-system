@@ -1,0 +1,57 @@
+{
+  "_comment": "Control for the 1/4 input scaling: same as mooncake_w1 (same selected tasks, prompts, arrivals and tool delays) but every LLM output length is also divided by 4 (trace.output_scale), restoring the trace's input:output ratio. Needs >= 6144 tokens per slot (CTX=24576 PARALLEL=4).",
+  "name": "mooncake_w1_out4",
+  "seed": 42,
+  "trace": {
+    "path": "workload/traces/toolagent_trace.jsonl",
+    "window_s": [
+      0,
+      900
+    ],
+    "fit_ctx_per_slot": 6144,
+    "output_scale": 4
+  },
+  "arrival": {
+    "process": "trace",
+    "num_tasks": 550
+  },
+  "task_types": [
+    {
+      "type": "mooncake_agent",
+      "weight": 1.0,
+      "steps": [
+        {
+          "kind": "llm",
+          "from_trace": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "uniform",
+            "min": 0.5,
+            "max": 2.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 128,
+          "carry_context": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "fixed",
+            "value": 1.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 256,
+          "carry_context": true
+        }
+      ]
+    }
+  ]
+}
