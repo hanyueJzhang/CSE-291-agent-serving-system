@@ -74,6 +74,12 @@ The ratio shows that reuse happened, not what it saved. For that, prefill is rep
 
 To answer "does reuse matter", run the same configuration with and without `--no-cache-prompt` and compare follow-up prefill (and TTFT). The summary prints `prompt cache on/OFF` so the two runs cannot be confused.
 
+### Avoidable re-prefill (`analysis/reprefill.py`)
+
+Bounds how much GPU time re-processing displaced context costs. For each follow-up, `new = max(prompt − (prev_prompt + prev_output), 0)` tokens are newly appended; the rest of the uncached tokens were already computed once. Their share of `prefill_ms` is the avoidable re-prefill. Totals are reported as a share of makespan and of GPU-busy time (makespan × mean `gpu_util_pct`); both are upper bounds because prefill can overlap other slots' decoding.
+
+    python -m analysis.reprefill results/mooncake_baseline/w1_fifo_c4_l{75,75_cram8g,95,95_cram8g}
+
 ## Memory
 
 | metric | formula | notes |
