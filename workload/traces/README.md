@@ -24,6 +24,7 @@ The workloads are `workload/tasks/mooncake_w{1,2,3}.json`, one per 900 s window.
 8. **Families.** A template is a hash shared by at least 100 requests in the whole trace. There are three template prefixes: `[0]`, `[46..57]` and `[74..78]`. A request's family is its first non-template hash, meaning requests with the same template and the same next block.
 9. **Load control.** Shuffle the window's families with `seed`, then add whole families until there are at least `arrival.num_tasks` tasks. This can overshoot by one family. A smaller N gives a subset of a larger N. Each task's jitter and tool delays come from its own RNG (`seed:line`), so a task is identical in every set.
 10. **Task fields.** `id` is `task-<trace line>`. `family` is the family ID (for analysis only).
+11. **Output scale (optional).** `trace.output_scale: k` divides every LLM output length by k (ceil). Fit filter and family sampling run before scaling, so the task set, prompts and arrivals are identical to the unscaled workload. `mooncake_w1_out4.json` uses k = 4 as a control for the 1/4 input scaling.
 
 ## Theoretical prefix hit
 

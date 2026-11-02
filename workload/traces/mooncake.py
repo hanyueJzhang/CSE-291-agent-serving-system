@@ -22,6 +22,13 @@ family). A smaller num_tasks therefore gives a subset of a larger one. Each task
 jitter and tool delays come from its own seeded RNG, so a task is identical in
 every set that contains it.
 
+Optional "trace": {"output_scale": k} divides every LLM step's output length
+(step0's trace output and the follow-ups' max_output_tokens) by k, rounding up.
+The fit filter and family sampling run on the unscaled tasks, so a scaled
+workload selects exactly the same tasks with the same prompts and arrivals;
+only output lengths change. It is a control for the 1/4 input scaling, which
+otherwise makes the workload more decode-heavy than the trace.
+
 Dry run (no server needed):
 
     python -m workload.traces.mooncake workload/tasks/mooncake_w1.json --fraction 0.1
@@ -134,7 +141,20 @@ def window_tasks(workload: dict[str, Any]) -> tuple[list[dict[str, Any]], int]:
     in_window = [line for line, row in enumerate(rows)
                  if start_s * 1000 <= row["timestamp"] < end_s * 1000]
     tasks = [_make_task(workload, line, rows[line], families[line]) for line in in_window]
-    return [t for t in tasks if estimate_peak_context(t) <= limit], len(in_window)
+    fitting = [t for t in tasks if estimate_peak_context(t) <= limit]
+    return [scale_outputs(t, trace.get("output_scale", 1)) for t in fitting], len(in_window)
+
+
+def scale_outputs(task: dict[str, Any], scale: float) -> dict[str, Any]:
+    """Divide every LLM step's output length by scale (ceil, at least 1).
+    Peak context only shrinks, so a task that fit before still fits."""
+    if scale == 1:
+        return task
+    if scale < 1:
+        raise ValueError(f"output_scale must be >= 1, got {scale}")
+    steps = [{**s, "max_output_tokens": max(1, math.ceil(s["max_output_tokens"] / scale))}
+             if "max_output_tokens" in s else s for s in task["steps"]]
+    return {**task, "steps": steps}
 
 
 def sample_families(tasks: list[dict[str, Any]], num_tasks: int, seed: int) -> list[dict[str, Any]]:

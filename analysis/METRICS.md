@@ -74,6 +74,12 @@ The ratio shows that reuse happened, not what it saved. For that, prefill is rep
 
 To answer "does reuse matter", run the same configuration with and without `--no-cache-prompt` and compare follow-up prefill (and TTFT). The summary prints `prompt cache on/OFF` so the two runs cannot be confused.
 
+### Avoidable re-prefill (`analysis/reprefill.py`)
+
+Bounds how much GPU time re-processing displaced context costs. For each follow-up, `new = max(prompt − (prev_prompt + prev_output), 0)` tokens are newly appended; the rest of the uncached tokens were already computed once. Their share of `prefill_ms` is the avoidable re-prefill. Totals are reported as a share of makespan and of GPU-busy time (makespan × mean `gpu_util_pct`); both are upper bounds because prefill can overlap other slots' decoding.
+
+    python -m analysis.reprefill results/mooncake_baseline/w1_fifo_c4_l{75,75_cram8g,95,95_cram8g}
+
 ## Memory
 
 | metric | formula | notes |
@@ -93,6 +99,12 @@ To answer "does reuse matter", run the same configuration with and without `--no
 | requests error / timeout | `requests.csv` `status` = `error` / `timeout` |
 | tasks failed / timeout | `tasks.csv` `status` = `failed` / `timeout`; a task ends at its first failed request |
 | top errors | the 3 most frequent `error` messages of failed requests (first 200 characters), with counts |
+
+### Context overflow (`analysis/overflow.py`)
+
+llama.cpp reserves KV at startup, so too much context never runs the GPU out of memory. It fails in one of two ways: the prompt does not fit the slot and the server rejects it (`status = error`), or prompt + output does not fit and generation stops early. The second still reports `status = ok`. With `ignore_eos` every complete response has exactly the requested length, so `overflow.py` regenerates the requested lengths from `run_config.json` and counts `output_tokens < requested` as truncated. All 46 Phase 1 runs show 0 truncated outputs.
+
+    python -m analysis.overflow results/phase1_overflow/*/
 
 ## Comparison table (`--table`)
 
