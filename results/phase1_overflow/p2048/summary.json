@@ -1,0 +1,124 @@
+{
+  "run_id": "p2048",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "context_overflow",
+    "workload_family": "context_agent_3step",
+    "cache_ram_mb": 0,
+    "initial_prompt_tokens": 2048
+  },
+  "scheduler": "fifo",
+  "concurrency": 4,
+  "workload": "ctx_agent_p2048",
+  "rate_per_s": 0.4,
+  "seed": 42,
+  "server_slots": 4,
+  "ctx_per_slot": 2048,
+  "cache_prompt": true,
+  "counts": {
+    "tasks": 100,
+    "tasks_ok": 0,
+    "tasks_failed": 100,
+    "tasks_timeout": 0,
+    "requests": 100,
+    "requests_ok": 0,
+    "requests_error": 100,
+    "requests_timeout": 0
+  },
+  "top_errors": [
+    [
+      "HTTP 400: request (2096 tokens) exceeds the available context size (2048 tokens), try increasing it",
+      100
+    ]
+  ],
+  "makespan_s": 299.8029987480004,
+  "throughput": {
+    "tasks_per_s": 0.0,
+    "requests_per_s": 0.0,
+    "output_tokens_per_s": 0.0,
+    "uncached_prompt_tokens_per_s": 0.0
+  },
+  "requests": {},
+  "by_step": {},
+  "tasks": {
+    "latency_s": {
+      "n": 0,
+      "mean": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "latency_excl_tool_s": {
+      "n": 0,
+      "mean": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "queue_s": {
+      "n": 0,
+      "mean": null,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    },
+    "by_type": {}
+  },
+  "prompt_cache": {
+    "cached_ratio_all": null,
+    "cached_ratio_followup_steps": null,
+    "first_steps": {
+      "prefill_ms": {
+        "n": 0,
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "uncached_tokens": {
+        "n": 0,
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      }
+    },
+    "followup_steps": {
+      "prefill_ms": {
+        "n": 0,
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "uncached_tokens": {
+        "n": 0,
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      }
+    }
+  },
+  "memory": {
+    "gpu_mem_peak_mb": 6098.6796875,
+    "gpu_util_mean_pct": 0.003305785123966942,
+    "server_rss_peak_mb": 780.6640625,
+    "slot_tokens_peak": 53.0,
+    "active_slot_tokens_peak": 0,
+    "idle_slot_tokens_peak": 53.0,
+    "idle_slot_tokens_mean": 53.0,
+    "server_requests_deferred_max": 0.0,
+    "samples": 605
+  },
+  "warnings": [
+    "100 task(s) may not fit the 2048-token slot context (estimated), e.g. ['task-0000', 'task-0001', 'task-0002']; expect context errors"
+  ]
+}
