@@ -5,16 +5,16 @@
 llama.cpp reserves KV memory at startup, so too much context does not run the
 GPU out of memory. It shows up in one of two ways instead:
 
-- error:     prompt + max_tokens does not fit the slot. The pinned llama.cpp
-             (972b5fc) checks this up front and rejects the request with
-             HTTP 400 "request (N tokens) exceeds the available context size";
-             this is what phase1_overflow observed.
-- truncated: a response shorter than requested. With ignore_eos every complete
-             response has exactly the requested length, so output_tokens <
-             requested means generation stopped early (e.g. a runtime that
-             truncates instead of rejecting). It would still report status
-             "ok", so summarize.py would count it as a success; this script
-             is the check.
+- error:     the prompt itself no longer fits the slot; llama.cpp rejects it
+             with HTTP 400 "request (N tokens) exceeds the available context
+             size". In phase1_overflow, p1536 fails this way at step 2 and
+             p2048 at step 0, after any earlier steps already used the GPU.
+- truncated: the prompt fits but prompt + output does not; generation stops
+             at the slot limit. With ignore_eos every complete response has
+             exactly the requested length, so output_tokens < requested means
+             truncated. The request still reports status "ok", so summarize.py
+             counts it as a success; this script is what catches it. In
+             phase1_overflow, all 100 p1024 tasks end with a truncated step 4.
 
 The requested output length comes from regenerating the run's tasks from the
 workload stored in run_config.json. Rows are per run and LLM step index.
