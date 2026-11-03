@@ -102,7 +102,7 @@ Bounds how much GPU time re-processing displaced context costs. For each follow-
 
 ### Context overflow (`analysis/overflow.py`)
 
-llama.cpp reserves KV at startup, so too much context never runs the GPU out of memory. It fails in one of two ways: the prompt does not fit the slot and the server rejects it (`status = error`), or prompt + output does not fit and generation stops early. The second still reports `status = ok`. With `ignore_eos` every complete response has exactly the requested length, so `overflow.py` regenerates the requested lengths from `run_config.json` and counts `output_tokens < requested` as truncated. All 46 Phase 1 runs show 0 truncated outputs.
+llama.cpp reserves KV at startup, so too much context never runs the GPU out of memory. The pinned llama.cpp checks prompt + `max_tokens` against the slot before running and rejects a request that does not fit with HTTP 400 (`status = error`); `phase1_overflow` shows this happens mid-task, after earlier steps already ran. A runtime could instead stop generation early, which would still report `status = ok`, so the script also counts outputs shorter than requested as truncated. With `ignore_eos` every complete response has exactly the requested length, so `overflow.py` regenerates the requested lengths from `run_config.json` and counts `output_tokens < requested` as truncated. All 46 Phase 1 runs show 0 truncated outputs.
 
     python -m analysis.overflow results/phase1_overflow/*/
 

@@ -89,7 +89,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, help="also write the rows as JSON")
     args = parser.parse_args(argv)
 
-    results = [analyze(d) for d in args.runs]
+    runs = [d for d in args.runs if (d / "requests.csv").is_file()]
+    for d in args.runs:
+        if d not in runs:
+            print(f"skipping {d}: no requests.csv (not a run folder)", file=sys.stderr)
+    results = [analyze(d) for d in runs]
     header = f"{'run':28s} {'util%':>6} {'makespan_s':>10} {'avoid_s':>8} {'%wall':>6} {'%busy':>6} {'tok/fu':>7}"
     print(header)
     for r in results:
