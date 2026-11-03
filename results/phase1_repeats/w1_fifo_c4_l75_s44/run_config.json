@@ -1,0 +1,166 @@
+{
+  "run_id": "w1_fifo_c4_l75_s44",
+  "status": "done",
+  "started_at": "2026-11-02T21:27:57.626806-08:00",
+  "argv": [
+    "/home/hanyue/CSE-291-agent-serving-system/scripts/run_experiment.py",
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4",
+    "--workload",
+    "workload/tasks/mooncake_w1.json",
+    "--num-tasks",
+    "223",
+    "--seed",
+    "44",
+    "--run-id",
+    "w1_fifo_c4_l75_s44",
+    "--results-dir",
+    "/home/hanyue/CSE-291-agent-serving-system/results/phase1_repeats",
+    "--url",
+    "http://localhost:8080",
+    "--dimensions-json",
+    "{\"phase\":1,\"experiment\":\"seed_repeat\",\"seed\":44,\"workload_family\":\"mooncake_w1\",\"load_pct_x\":75,\"cache_ram_mb\":0}"
+  ],
+  "workload_file": "workload/tasks/mooncake_w1.json",
+  "workload": {
+    "_comment": "Mooncake toolagent trace, window W1 = [0, 900) s. One trace request = one task: step0 from the trace (input scaled 1/4, output kept), then the agent_3step follow-ups. num_tasks = target task count, reached by sampling whole prefix families (may overshoot by one family). Needs >= 6144 tokens per slot (CTX=24576 PARALLEL=4). See workload/traces/README.md.",
+    "name": "mooncake_w1",
+    "seed": 44,
+    "trace": {
+      "path": "workload/traces/toolagent_trace.jsonl",
+      "window_s": [
+        0,
+        900
+      ],
+      "fit_ctx_per_slot": 6144
+    },
+    "arrival": {
+      "process": "trace",
+      "num_tasks": 223
+    },
+    "task_types": [
+      {
+        "type": "mooncake_agent",
+        "weight": 1.0,
+        "steps": [
+          {
+            "kind": "llm",
+            "from_trace": true
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "uniform",
+              "min": 0.5,
+              "max": 2.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 128,
+            "carry_context": true
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "fixed",
+              "value": 1.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 256,
+            "carry_context": true
+          }
+        ]
+      }
+    ]
+  },
+  "dimensions": {
+    "phase": 1,
+    "experiment": "seed_repeat",
+    "seed": 44,
+    "workload_family": "mooncake_w1",
+    "load_pct_x": 75,
+    "cache_ram_mb": 0
+  },
+  "num_tasks": 223,
+  "prompt_salt": "[run 8d5b8809]",
+  "scheduler": {
+    "name": "fifo",
+    "max_concurrency": 4
+  },
+  "client": {
+    "base_url": "http://localhost:8080",
+    "timeout_s": 300.0,
+    "temperature": 0.0,
+    "seed": 0,
+    "ignore_eos": true,
+    "cache_prompt": true
+  },
+  "server": {
+    "url": "http://localhost:8080",
+    "total_slots": 4,
+    "n_ctx_per_slot": 6144,
+    "model_path": "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "build_info": "b11567-972b5fcc1",
+    "endpoint_slots": true,
+    "endpoint_metrics": true,
+    "chat_template_sha256": "93c0e9aa3629bbd7",
+    "slots_n_ctx": [
+      6144,
+      6144,
+      6144,
+      6144
+    ],
+    "cmdline": [
+      "third_party/llama.cpp/build/bin/llama-server",
+      "-m",
+      "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      "-c",
+      "24576",
+      "--parallel",
+      "4",
+      "-ngl",
+      "99",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "--metrics",
+      "--cache-ram",
+      "0"
+    ]
+  },
+  "pinned": {
+    "LLAMA_CPP_REPO": "https://github.com/ggml-org/llama.cpp",
+    "LLAMA_CPP_COMMIT": "972b5fcc19670e597f8de9bf5cacfb85752a5fff",
+    "MODEL_HF_REPO": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+    "MODEL_FILE": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "SERVER_PORT": "${SERVER_PORT:-8080}",
+    "CTX": "${CTX:-8192}",
+    "PARALLEL": "${PARALLEL:-4}",
+    "NGL": "${NGL:-99}",
+    "CACHE_RAM": "${CACHE_RAM:-2048}"
+  },
+  "repo": {
+    "commit": "a1b5f064a02e3b744a498e889b6c6f4b16e92879",
+    "branch": "main",
+    "dirty": false
+  },
+  "host": {
+    "hostname": "JamesPC",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "environment": "date:            2026-11-02T21:27:55-08:00\nrepo_commit:     a1b5f06\nos:              Ubuntu 24.04.5 LTS / kernel 6.18.54.1-microsoft-standard-WSL2\nwsl:             yes\ncpu:             AMD Ryzen 7 7700X 8-Core Processor\nram_total:       15 GB\ngpu:             NVIDIA GeForce RTX 3080, 10240 MiB, 617.42\ncuda_toolkit:    release 13.3\npython:          Python 3.12.3\nllama_cpp:       972b5fcc1 (pinned: 972b5fcc19670e597f8de9bf5cacfb85752a5fff)\nmodel:           Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf sha256=7b064f5842bf9532\nserver_defaults: CTX=8192 PARALLEL=4 NGL=99",
+  "sample_interval_s": 0.5,
+  "warmup_requests": 1,
+  "warnings": [],
+  "ended_at": "2026-11-02T21:43:11.403758-08:00",
+  "sampler_notes": []
+}
