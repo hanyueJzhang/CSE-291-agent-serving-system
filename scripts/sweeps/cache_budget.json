@@ -1,0 +1,214 @@
+{
+  "_comment": "Host-cache budget curve on W1 at 0.95X: 1, 2 and 4 GiB, filling in between the existing 0 and 8 GiB points (mooncake_baseline for seed 42, phase1_repeats for seeds 43-44). Same tasks as those runs (282 tasks, same seeds), so results pair with them. Seed 42 runs come first (3 runs, ~50 min) and are enough to see the curve's shape; seeds 43-44 (6 runs, ~1.7 h) add error bars. Ctrl+C after any run is safe; rerunning resumes.",
+  "name": "cache_budget",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "cache_budget"
+  },
+  "args": [
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4"
+  ],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c4_l95_cram1g",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 1024
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 1024
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram2g",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 2048
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 2048
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram4g",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram1g_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 1024
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 1024
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram2g_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 2048
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 2048
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram4g_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram1g_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 1024
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 1024
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram2g_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 2048
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 2048
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c4_l95_cram4g_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}
