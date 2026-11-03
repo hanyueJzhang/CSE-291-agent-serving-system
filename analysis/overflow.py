@@ -5,12 +5,16 @@
 llama.cpp reserves KV memory at startup, so too much context does not run the
 GPU out of memory. It shows up in one of two ways instead:
 
-- error:     the prompt itself no longer fits the slot; the server rejects it.
+- error:     the prompt itself no longer fits the slot; llama.cpp rejects it
+             with HTTP 400 "request (N tokens) exceeds the available context
+             size". In phase1_overflow, p1536 fails this way at step 2 and
+             p2048 at step 0, after any earlier steps already used the GPU.
 - truncated: the prompt fits but prompt + output does not; generation stops
-             early. With ignore_eos every complete response has exactly the
-             requested length, so output_tokens < requested means truncated.
-             The request still reports status "ok", so summarize.py counts it
-             as a success; this script is what catches it.
+             at the slot limit. With ignore_eos every complete response has
+             exactly the requested length, so output_tokens < requested means
+             truncated. The request still reports status "ok", so summarize.py
+             counts it as a success; this script is what catches it. In
+             phase1_overflow, all 100 p1024 tasks end with a truncated step 4.
 
 The requested output length comes from regenerating the run's tasks from the
 workload stored in run_config.json. Rows are per run and LLM step index.
@@ -81,7 +85,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, help="also write the rows as JSON")
     args = parser.parse_args(argv)
 
-    results = [analyze(d) for d in args.runs]
+    runs = [d for d in args.runs if (d / "requests.csv").is_file()]
+    for d in args.runs:
+        if d not in runs:
+            print(f"skipping {d}: no requests.csv (not a run folder)", file=sys.stderr)
+    results = [analyze(d) for d in runs]
     for r in results:
         print(f"{r['run']}: tasks {r['tasks']}, tasks with truncated output {r['tasks_with_truncated_output']}")
         for step, counts in r["requests_by_step"].items():
