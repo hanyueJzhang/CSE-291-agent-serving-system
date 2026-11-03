@@ -1,0 +1,66 @@
+{
+  "_comment": "Control for the 1/4 input scaling (report item 2). mooncake_w1_out4 = the same W1 tasks, prompts and arrivals as mooncake_baseline, with every output length also divided by 4. Run 1 is an overload calibration (550 tasks, as mooncake_calib) giving this variant's X'; runs 2-3 replay the exact 0.95X task set of w1_fifo_c4_l95(_cram8g) for a matched-task comparison. Compare with python -m analysis.reprefill. If X' is much larger than 0.330, the matched set is lightly loaded; add a run at 0.95X' afterwards. 6144 tokens per slot. Run 4 (added after the first pass showed the 282-task set is lightly loaded for this variant) repeats the 550-task set with the 8 GiB host cache.",
+  "name": "mooncake_out4",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "output_scale_control",
+    "workload_family": "mooncake_w1",
+    "output_scale": 4,
+    "cache_ram_mb": 0
+  },
+  "server": {
+    "CTX": 24576,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4",
+    "--workload",
+    "workload/tasks/mooncake_w1_out4.json"
+  ],
+  "runs": [
+    {
+      "run_id": "w1out4_fifo_c4_n550",
+      "args": [
+        "--num-tasks",
+        "550"
+      ]
+    },
+    {
+      "run_id": "w1out4_fifo_c4_l95",
+      "args": [
+        "--num-tasks",
+        "282"
+      ]
+    },
+    {
+      "run_id": "w1out4_fifo_c4_l95_cram8g",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "dimensions": {
+        "cache_ram_mb": 8192
+      },
+      "args": [
+        "--num-tasks",
+        "282"
+      ]
+    },
+    {
+      "run_id": "w1out4_fifo_c4_n550_cram8g",
+      "server": {
+        "CACHE_RAM": 8192
+      },
+      "dimensions": {
+        "cache_ram_mb": 8192
+      },
+      "args": [
+        "--num-tasks",
+        "550"
+      ]
+    }
+  ]
+}

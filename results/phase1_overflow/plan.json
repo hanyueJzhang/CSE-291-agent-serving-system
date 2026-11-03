@@ -1,0 +1,67 @@
+{
+  "_comment": "Context overflow (report item 3): where do failures start? Same agent_3step context workloads as phase1_context, but on 2048-token slots (8192/4) so the larger ones outgrow the slot. Estimated peak context: p512 1720 (fits), p1024 2232 (last output truncated), p1536 2744 (step-2 output truncated, step-4 prompt rejected), p2048 3256 (step-0 prompt rejected). Expect run_experiment to warn 'may not fit'; that is the point. Rate 0.4 tasks/s, concurrency 4. Analyze with python -m analysis.overflow, which also counts truncated outputs that report status ok.",
+  "name": "phase1_overflow",
+  "dimensions": {
+    "phase": 1,
+    "experiment": "context_overflow",
+    "workload_family": "context_agent_3step",
+    "cache_ram_mb": 0
+  },
+  "server": {
+    "CTX": 8192,
+    "PARALLEL": 4,
+    "CACHE_RAM": 0
+  },
+  "args": [
+    "--scheduler",
+    "fifo",
+    "--concurrency",
+    "4",
+    "--rate",
+    "0.4",
+    "--num-tasks",
+    "100"
+  ],
+  "runs": [
+    {
+      "run_id": "p512",
+      "dimensions": {
+        "initial_prompt_tokens": 512
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/ctx_agent_p512.json"
+      ]
+    },
+    {
+      "run_id": "p1024",
+      "dimensions": {
+        "initial_prompt_tokens": 1024
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/ctx_agent_p1024.json"
+      ]
+    },
+    {
+      "run_id": "p1536",
+      "dimensions": {
+        "initial_prompt_tokens": 1536
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/ctx_agent_p1536.json"
+      ]
+    },
+    {
+      "run_id": "p2048",
+      "dimensions": {
+        "initial_prompt_tokens": 2048
+      },
+      "args": [
+        "--workload",
+        "workload/tasks/ctx_agent_p2048.json"
+      ]
+    }
+  ]
+}
