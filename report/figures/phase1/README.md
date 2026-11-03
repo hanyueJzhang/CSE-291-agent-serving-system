@@ -70,6 +70,16 @@ These four main figures answer different baseline questions:
 
 [Host prompt cache](host_cache.pdf) is supporting or appendix evidence rather than a core figure. Additional host cache improves follow-up reuse and prefill time at moderate load, but the measured end-to-end task throughput and P95 latency do not materially improve. An 8 GiB cache also raises peak server RSS from about 0.8 GiB to 8.8 GiB. This result helps justify focusing Phase 2 on admission and scheduling instead of a large fixed host-cache allocation.
 
+## Supporting result: avoidable re-prefill
+
+[Re-prefill](reprefill.pdf) is generated separately because it aggregates seeds 42-44:
+
+```bash
+python -m analysis.reporting.reprefill_figure
+```
+
+Left: the share of GPU-busy time spent re-prefilling history that a follow-up had already processed (`analysis/reprefill.py`), for W1 at 0.50X/0.75X/0.95X and the output-scaled control, with the host cache off and at 8 GiB. Right: task P95 for the same runs. Bars are seed means, whiskers min-max, dots individual seeds; W1 0.75X with the cache is seed 42 only. Re-prefill grows with load (4% to 19%) and roughly doubles when outputs are scaled with inputs (37%); the cache cuts it to 1-6%. Tail latency varies much more across seeds than re-prefill does, because near saturation small differences in sampled load are amplified by queueing.
+
 ## Overall Phase 1 finding
 
 The fixed FIFO baseline works best when scheduler concurrency matches server parallelism, but it still degrades when offered load exceeds capacity, when agent contexts become large, or when tool waits prevent follow-up context reuse. These measurements motivate a Phase 2 policy that considers current load, estimated context footprint, and whether a ready step can reuse retained context.
