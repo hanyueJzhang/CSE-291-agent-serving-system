@@ -2,12 +2,12 @@
 
     python -m analysis.reporting.reprefill_figure
 
-Writes report/figures/phase1/reprefill.{png,pdf}. Bars are means over the
-seeds available for each configuration, whiskers span min to max, and dots are
-individual seeds. Seed 42 lives in mooncake_baseline / mooncake_out4; seeds 43
-and 44 in phase1_repeats. W1 0.75X with the host cache was run with seed 42
-only, so its bar has no whisker. Re-prefill comes from analysis.reprefill;
-task P95 from each run's summary.json.
+Writes report/figures/phase1/reprefill.{png,pdf}. Bars are means over seeds
+42-44, whiskers span min to max, and dots are individual seeds. The W1 load
+levels use the tuned FIFO concurrency of five (w1_c5_loads, w1_concurrency,
+and cache_budget for the 8 GiB host cache). The output-scaled control was run
+at concurrency four (mooncake_out4 and phase1_repeats). Re-prefill comes from
+analysis.reprefill; task P95 from each run's summary.json.
 """
 
 from __future__ import annotations
@@ -25,25 +25,29 @@ from .style import COLORS, apply_style, save_figure
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS = REPO_ROOT / "results"
 REPEATS = RESULTS / "phase1_repeats"
+SEEDS = (43, 44)
 
-# group label -> {cache: (seed-42 folder, repeats run_id or None)}
+
+def _seeds(seed42: str, others: str) -> list[str]:
+    """seed42 folder plus <others>_s43 and _s44."""
+    return [seed42] + [f"{others}_s{seed}" for seed in SEEDS]
+
+
+# group label -> {cache: run folders relative to results/}
 GROUPS = {
-    "W1\n0.50X": {"off": ("mooncake_baseline/w1_fifo_c4_l50", "w1_fifo_c4_l50")},
-    "W1\n0.75X": {"off": ("mooncake_baseline/w1_fifo_c4_l75", "w1_fifo_c4_l75"),
-                  "on": ("mooncake_baseline/w1_fifo_c4_l75_cram8g", None)},
-    "W1\n0.95X": {"off": ("mooncake_baseline/w1_fifo_c4_l95", "w1_fifo_c4_l95"),
-                  "on": ("mooncake_baseline/w1_fifo_c4_l95_cram8g", "w1_fifo_c4_l95_cram8g")},
-    "W1, outputs /4\n550 tasks": {"off": ("mooncake_out4/w1out4_fifo_c4_n550", "w1out4_fifo_c4_n550"),
-                                  "on": ("mooncake_out4/w1out4_fifo_c4_n550_cram8g", "w1out4_fifo_c4_n550_cram8g")},
+    "W1\n0.50X": {"off": _seeds("w1_c5_loads/w1_fifo_c5_l50", "w1_c5_loads/w1_fifo_c5_l50")},
+    "W1\n0.75X": {"off": _seeds("w1_c5_loads/w1_fifo_c5_l75", "w1_c5_loads/w1_fifo_c5_l75")},
+    "W1\n0.95X": {"off": _seeds("w1_concurrency/w1_fifo_c5_l95", "w1_concurrency/w1_fifo_c5_l95"),
+                  "on": _seeds("cache_budget/w1_fifo_c5_l95_cram8g", "cache_budget/w1_fifo_c5_l95_cram8g")},
+    "W1, outputs /4\n550 tasks (c=4)": {
+        "off": _seeds("mooncake_out4/w1out4_fifo_c4_n550", "phase1_repeats/w1out4_fifo_c4_n550"),
+        "on": _seeds("mooncake_out4/w1out4_fifo_c4_n550_cram8g", "phase1_repeats/w1out4_fifo_c4_n550_cram8g")},
 }
 SERIES = {"off": ("Host cache off", COLORS["gray"]), "on": ("Host cache 8 GiB", COLORS["blue"])}
 
 
-def run_dirs(seed42: str, run_id: str | None) -> list[Path]:
-    dirs = [RESULTS / seed42]
-    if run_id:
-        dirs += [REPEATS / f"{run_id}_s{seed}" for seed in (43, 44)]
-    return [d for d in dirs if (d / "requests.csv").is_file()]
+def run_dirs(folders: list[str]) -> list[Path]:
+    return [RESULTS / f for f in folders if (RESULTS / f / "requests.csv").is_file()]
 
 
 def metrics(run_dir: Path) -> dict[str, float]:
@@ -55,7 +59,7 @@ def metrics(run_dir: Path) -> dict[str, float]:
 
 
 def collect() -> dict[str, dict[str, list[dict[str, float]]]]:
-    return {label: {cache: [metrics(d) for d in run_dirs(*src)] for cache, src in caches.items()}
+    return {label: {cache: [metrics(d) for d in run_dirs(folders)] for cache, folders in caches.items()}
             for label, caches in GROUPS.items()}
 
 
