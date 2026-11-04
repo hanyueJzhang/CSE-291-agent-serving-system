@@ -1,5 +1,5 @@
 {
-  "_comment": "FIFO concurrency check on W1 at 0.95X (282 tasks, seed 42, four 6,144-token slots, no host cache): c = 3, 5, 2, 6 around the c = 4 used by every trace run so far (w1_fifo_c4_l95 in mooncake_baseline is the c = 4 point). Confirms or replaces the best fixed-concurrency baseline the prompt asks for. c = 3 and 5 come first (~35 min); 2 and 6 add ~35 min. Ctrl+C after any run is safe; rerunning resumes.",
+  "_comment": "FIFO concurrency check on W1 at 0.95X (282 tasks, four 6,144-token slots, no host cache). c = 4 points already exist: w1_fifo_c4_l95 (seed 42, mooncake_baseline) and w1_fifo_c4_l95_s43/_s44 (phase1_repeats). Seed 42 showed c = 5 slightly ahead of c = 4 (task P95 33.0 vs 38.5 s, equal throughput), so c = 5 is repeated on seeds 43-44 to pair with the c = 4 repeats, then c = 6 and c = 8 check whether the trend continues past c = 5. c = 3 and c = 5 seed 42 are already done and are skipped. About 1 h for the four new runs. c = 2 was dropped: c = 3 already shows that fewer than four admitted requests leaves slots idle. Ctrl+C after any run is safe; rerunning resumes.",
   "name": "w1_concurrency",
   "dimensions": {
     "phase": 1,
@@ -61,28 +61,53 @@
       ]
     },
     {
-      "run_id": "w1_fifo_c2_l95",
+      "run_id": "w1_fifo_c5_l95_s43",
       "server": {
         "CTX": 24576,
         "PARALLEL": 4,
         "CACHE_RAM": 0
       },
       "dimensions": {
-        "seed": 42,
+        "seed": 43,
         "workload_family": "mooncake_w1",
         "load_pct_x": 95,
         "cache_ram_mb": 0,
-        "concurrency": 2
+        "concurrency": 5
       },
       "args": [
         "--concurrency",
-        "2",
+        "5",
         "--workload",
         "workload/tasks/mooncake_w1.json",
         "--num-tasks",
         "282",
         "--seed",
-        "42"
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c5_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 5
+      },
+      "args": [
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
       ]
     },
     {
@@ -102,6 +127,31 @@
       "args": [
         "--concurrency",
         "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c8_l95",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 8
+      },
+      "args": [
+        "--concurrency",
+        "8",
         "--workload",
         "workload/tasks/mooncake_w1.json",
         "--num-tasks",
