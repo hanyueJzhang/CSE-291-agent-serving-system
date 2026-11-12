@@ -34,6 +34,7 @@ All timestamps are seconds since run start (monotonic clock).
 | decode_ms | server-reported generation time |
 | status | ok / error / timeout |
 | error | server or client error message |
+| slot_id | llama-server slot that served the request (from the response's `__verbose.id_slot`; blank in runs before Phase 2 or with `--no-slot-id`) |
 
 ## tasks.csv
 | column | meaning |

@@ -60,6 +60,25 @@ put explicit scalar metadata in their `dimensions` objects; the sweep runner
 preserves it in `run_config.json`, `summary.json`, and `dim_*` columns of
 `sweep.csv`.
 
+## Phase 2 slot diagnostics
+
+`requests.csv` records which llama-server slot served each request (`slot_id`,
+read from the `__verbose` field that `"verbose": true` adds to the stream). Two
+offline analyses use it (both also work, minus the per-slot columns, on Phase 1
+runs without `slot_id`):
+
+```bash
+python -m scripts.sweep scripts/sweeps/phase2_diag.json      # W1 0.95X, c = 4 and 5, seed 42 (~40 min)
+python -m analysis.slot_replay results/phase2_diag/w1_fifo_c4_l95 results/phase2_diag/w1_fifo_c5_l95
+python -m analysis.slot_gaps   results/phase2_diag/w1_fifo_c4_l95 results/phase2_diag/w1_fifo_c5_l95
+```
+
+`slot_replay` replays the measured request timeline with different slot
+choices (llama.cpp's prefix-then-LRU, plain LRU, dead-first, dead-first with an
+oracle victim, plus a hold-threshold table) and reports how much carried agent
+history each would keep. `slot_gaps` checks whether c = 5 beats c = 4 by hiding
+dispatch gaps or by better slot choice.
+
 ## Keeping environments consistent
 
 Only the machine that produces reported numbers must match exactly; dev machines just need to run the code.

@@ -8,6 +8,11 @@ match the pinned llama.cpp commit (see setup/config.env):
 - with stream_options.include_usage, a final chunk with empty `choices` carries
   `usage`: prompt_tokens, completion_tokens, prompt_tokens_details.cached_tokens
 - errors arrive either as a non-200 response or as a `data: {"error": ...}` event
+- with "verbose": true in the request, the first chunk of the final result carries
+  `__verbose` (the native /completion result), whose `id_slot` is the slot that
+  served the request; the OpenAI-shaped chunks carry no slot otherwise
+- a request may name a slot with "id_slot"; if that slot is busy, llama-server
+  defers the request until the slot is free (it does not fall back to another)
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ class Completion:
     output_tokens: int | None = None
     prefill_ms: float | None = None
     decode_ms: float | None = None
+    slot_id: int | None = None         # llama-server slot that served it (needs report_slot)
 
     @property
     def ttft_s(self) -> float | None:
@@ -73,6 +79,7 @@ class LlamaClient:
         seed: int = 0,
         ignore_eos: bool = True,
         cache_prompt: bool = True,
+        report_slot: bool = True,
         clock: Callable[[], float] = time.monotonic,
     ):
         self.base_url = base_url.rstrip("/")
@@ -81,6 +88,7 @@ class LlamaClient:
         self.seed = seed
         self.ignore_eos = ignore_eos
         self.cache_prompt = cache_prompt
+        self.report_slot = report_slot
         self._clock = clock
         self._session: aiohttp.ClientSession | None = None
 
@@ -104,6 +112,7 @@ class LlamaClient:
             "seed": self.seed,
             "ignore_eos": self.ignore_eos,
             "cache_prompt": self.cache_prompt,
+            "report_slot": self.report_slot,
         }
 
     def _get_session(self) -> aiohttp.ClientSession:
@@ -139,9 +148,13 @@ class LlamaClient:
 
     # ---- chat --------------------------------------------------------------
 
-    async def complete(self, messages: list[dict[str, str]], max_tokens: int) -> Completion:
+    async def complete(
+        self, messages: list[dict[str, str]], max_tokens: int, *, id_slot: int | None = None
+    ) -> Completion:
         """Run one chat request. Never raises for server errors or timeouts;
-        they are reported through Completion.status instead."""
+        they are reported through Completion.status instead.
+
+        id_slot pins the request to that llama-server slot (None: the server picks)."""
         body = {
             "messages": messages,
             "max_tokens": max_tokens,
@@ -152,6 +165,10 @@ class LlamaClient:
             "stream": True,
             "stream_options": {"include_usage": True},
         }
+        if self.report_slot:
+            body["verbose"] = True
+        if id_slot is not None:
+            body["id_slot"] = id_slot
         result = Completion(t_start=self._clock())
         try:
             await asyncio.wait_for(self._stream(body, result), timeout=self.timeout_s)
@@ -209,6 +226,10 @@ class LlamaClient:
                 parts.append(content)
             if choice.get("finish_reason"):
                 result.finish_reason = choice["finish_reason"]
+
+        verbose = event.get("__verbose")
+        if isinstance(verbose, dict) and verbose.get("id_slot") is not None:
+            result.slot_id = verbose["id_slot"]
 
         usage = event.get("usage")
         if usage:
