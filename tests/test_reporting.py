@@ -63,6 +63,7 @@ class ReportingLoaderTests(unittest.TestCase):
         self.assertEqual(frame.loc[0, "task_latency_p95_s"], 2.0)
         self.assertEqual(frame.loc[0, "task_queue_p95_s"], 2.0)
         self.assertEqual(frame.loc[0, "slot_occupancy_ratio"], 0.5)
+        self.assertEqual(frame.loc[0, "cached_ratio_step0"], 0.0)
         self.assertEqual((steps.loc[0, "task_type"], steps.loc[0, "step_idx"]), ("agent", 0))
 
     def test_conflicting_metadata_is_rejected(self):
@@ -70,6 +71,14 @@ class ReportingLoaderTests(unittest.TestCase):
         manifest["results/group/r1"]["phase"] = 2
         with self.assertRaisesRegex(ValueError, "dimension 'phase' conflicts"):
             load_run("results/group/r1", manifest=manifest, root=self.root)
+
+    def test_reconstructs_token_weighted_step0_cache_ratio(self):
+        data = summary()
+        data["by_step"]["agent/step0"]["prompt_tokens"] = {"n": 4, "mean": 100.0}
+        data["by_step"]["agent/step0"]["uncached_tokens"] = {"n": 4, "mean": 25.0}
+        (self.run / "summary.json").write_text(json.dumps(data))
+        loaded = load_run(self.run, root=self.root)
+        self.assertEqual(loaded.record["cached_ratio_step0"], 0.75)
 
 
 class ReportingValidationTests(unittest.TestCase):

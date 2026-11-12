@@ -99,6 +99,34 @@ def _merge_dimensions(sources: Iterable[tuple[str, dict[str, Any]]]) -> dict[str
     return merged
 
 
+def _step_cache_ratio(summary: dict[str, Any], step_indices: set[int]) -> float | None:
+    """Return a token-weighted cache ratio for selected LLM step indices.
+
+    Older summaries do not store a separate first-step cache ratio. Their
+    ``by_step`` records do contain the count and mean of prompt and uncached
+    tokens, which are sufficient to reconstruct the exact aggregate ratio.
+    """
+    prompt_total = 0.0
+    uncached_total = 0.0
+    matched = False
+    for name, values in (summary.get("by_step") or {}).items():
+        _, separator, raw_step = name.rpartition("/step")
+        if not separator or int(raw_step) not in step_indices:
+            continue
+        prompt = values.get("prompt_tokens") or {}
+        uncached = values.get("uncached_tokens") or {}
+        prompt_n, prompt_mean = prompt.get("n"), prompt.get("mean")
+        uncached_n, uncached_mean = uncached.get("n"), uncached.get("mean")
+        if None in (prompt_n, prompt_mean, uncached_n, uncached_mean):
+            continue
+        prompt_total += float(prompt_n) * float(prompt_mean)
+        uncached_total += float(uncached_n) * float(uncached_mean)
+        matched = True
+    if not matched or prompt_total == 0:
+        return None
+    return 1.0 - uncached_total / prompt_total
+
+
 RUN_FIELDS = {
     "run_id": "run_id",
     "workload": "workload",
@@ -178,6 +206,7 @@ def _run_record(run_path: Path, summary: dict[str, Any], dimensions: dict[str, A
     record["slot_occupancy_ratio"] = peak / capacity if peak is not None and capacity else None
     tasks, ok = record.get("tasks"), record.get("tasks_ok")
     record["task_success_rate"] = ok / tasks if ok is not None and tasks else None
+    record["cached_ratio_step0"] = _step_cache_ratio(summary, {0})
     return record
 
 

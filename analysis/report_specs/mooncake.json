@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "manifest": "analysis/report_specs/mooncake_runs.json",
+  "output_dir": "report/figures/mooncake",
+  "formats": ["png", "pdf"],
+  "figures": [
+    {
+      "id": "load_scaling",
+      "type": "mooncake_load",
+      "title": "Mooncake FIFO behavior as offered load approaches capacity",
+      "runs": [
+        "results/mooncake_baseline/w1_fifo_c4_l50",
+        "results/mooncake_baseline/w1_fifo_c4_l75",
+        "results/mooncake_baseline/w1_fifo_c4_l95",
+        "results/mooncake_baseline/w2_fifo_c4_l50",
+        "results/mooncake_baseline/w2_fifo_c4_l75",
+        "results/mooncake_baseline/w2_fifo_c4_l95",
+        "results/mooncake_baseline/w3_fifo_c4_l50",
+        "results/mooncake_baseline/w3_fifo_c4_l75",
+        "results/mooncake_baseline/w3_fifo_c4_l95"
+      ],
+      "expected_windows": ["W1", "W2", "W3"],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "concurrency",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt",
+        "cache_ram_mb"
+      ]
+    },
+    {
+      "id": "host_cache_comparison",
+      "type": "mooncake_host_cache",
+      "title": "Host prompt cache reduces recomputation at a memory cost (W1)",
+      "runs": [
+        "results/mooncake_baseline/w1_fifo_c4_l75",
+        "results/mooncake_baseline/w1_fifo_c4_l75_cram8g",
+        "results/mooncake_baseline/w1_fifo_c4_l95",
+        "results/mooncake_baseline/w1_fifo_c4_l95_cram8g"
+      ],
+      "require_constant": [
+        "workload_family",
+        "trace_window",
+        "scheduler",
+        "concurrency",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt"
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "id": "summary",
+      "type": "mooncake_summary",
+      "calibrated_capacity_tasks_per_s": 0.330,
+      "host_cache_window": "W1",
+      "host_cache_loads": [0.75, 0.95],
+      "runs": [
+        "results/mooncake_baseline/w1_fifo_c4_l50",
+        "results/mooncake_baseline/w1_fifo_c4_l75",
+        "results/mooncake_baseline/w1_fifo_c4_l95",
+        "results/mooncake_baseline/w2_fifo_c4_l50",
+        "results/mooncake_baseline/w2_fifo_c4_l75",
+        "results/mooncake_baseline/w2_fifo_c4_l95",
+        "results/mooncake_baseline/w3_fifo_c4_l50",
+        "results/mooncake_baseline/w3_fifo_c4_l75",
+        "results/mooncake_baseline/w3_fifo_c4_l95",
+        "results/mooncake_baseline/w1_fifo_c4_l75_cram8g",
+        "results/mooncake_baseline/w1_fifo_c4_l95_cram8g"
+      ],
+      "require_constant": [
+        "workload_family",
+        "scheduler",
+        "concurrency",
+        "seed",
+        "server_slots",
+        "ctx_per_slot",
+        "cache_prompt"
+      ]
+    }
+  ]
+}

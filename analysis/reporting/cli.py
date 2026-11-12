@@ -1,4 +1,4 @@
-"""Generate a complete report figure set from a JSON specification.
+"""Generate report figures and tables from a JSON specification.
 
 Usage:
     python -m analysis.reporting.cli analysis/report_specs/phase1.json
@@ -14,14 +14,19 @@ from typing import Any
 from .figures import RENDERERS
 from .loader import REPO_ROOT, load_runs, run_frame, step_frame
 from .style import apply_style
+from .tables import RENDERERS as TABLE_RENDERERS
 
 
 def _read_spec(path: Path) -> dict[str, Any]:
     spec = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(spec, dict) or spec.get("version") != 1:
         raise ValueError(f"{path}: expected report specification version 1")
-    if not isinstance(spec.get("figures"), list):
-        raise ValueError(f"{path}: 'figures' must be a list")
+    figures = spec.get("figures", [])
+    tables = spec.get("tables", [])
+    if not isinstance(figures, list) or not isinstance(tables, list):
+        raise ValueError(f"{path}: 'figures' and 'tables' must be lists")
+    if not figures and not tables:
+        raise ValueError(f"{path}: expected at least one figure or table")
     return spec
 
 
@@ -38,7 +43,7 @@ def generate(spec_path: str | Path, *, output_dir: str | Path | None = None) -> 
 
     apply_style()
     written: list[Path] = []
-    for figure in report["figures"]:
+    for figure in report.get("figures", []):
         figure_id = figure.get("id")
         figure_type = figure.get("type")
         if not figure_id or figure_type not in RENDERERS:
@@ -52,6 +57,17 @@ def generate(spec_path: str | Path, *, output_dir: str | Path | None = None) -> 
         runs_df = run_frame(runs)
         _ = step_frame(runs)
         outputs = RENDERERS[figure_type](runs_df, figure, destination / figure_id, formats)
+        written.extend(outputs)
+    for table in report.get("tables", []):
+        table_id = table.get("id")
+        table_type = table.get("type")
+        if not table_id or table_type not in TABLE_RENDERERS:
+            raise ValueError(f"{spec_path}: invalid table entry {table!r}")
+        paths = table.get("runs")
+        if not isinstance(paths, list) or not paths:
+            raise ValueError(f"{table_id}: 'runs' must be a non-empty list")
+        runs = load_runs(paths, manifest_path=manifest, root=REPO_ROOT)
+        outputs = TABLE_RENDERERS[table_type](run_frame(runs), table, destination / table_id)
         written.extend(outputs)
     return written
 

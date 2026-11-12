@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "runs": {
+    "results/mooncake_baseline/w1_fifo_c4_l50": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W1",
+      "load_fraction": 0.50,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w1_fifo_c4_l75": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W1",
+      "load_fraction": 0.75,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w1_fifo_c4_l95": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W1",
+      "load_fraction": 0.95,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w2_fifo_c4_l50": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W2",
+      "load_fraction": 0.50,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w2_fifo_c4_l75": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W2",
+      "load_fraction": 0.75,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w2_fifo_c4_l95": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W2",
+      "load_fraction": 0.95,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w3_fifo_c4_l50": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W3",
+      "load_fraction": 0.50,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w3_fifo_c4_l75": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W3",
+      "load_fraction": 0.75,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w3_fifo_c4_l95": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W3",
+      "load_fraction": 0.95,
+      "cache_ram_mb": 0
+    },
+    "results/mooncake_baseline/w1_fifo_c4_l75_cram8g": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W1",
+      "load_fraction": 0.75,
+      "cache_ram_mb": 8192
+    },
+    "results/mooncake_baseline/w1_fifo_c4_l95_cram8g": {
+      "workload_family": "mooncake_toolagent",
+      "trace_window": "W1",
+      "load_fraction": 0.95,
+      "cache_ram_mb": 8192
+    }
+  }
+}
