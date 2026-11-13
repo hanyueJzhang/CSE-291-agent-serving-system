@@ -12,6 +12,7 @@ REQUEST_COLUMNS = [
     "prompt_tokens", "cached_tokens", "output_tokens",
     "prefill_ms", "decode_ms",
     "status", "error",
+    "slot_id",
 ]
 
 TASK_COLUMNS = [
@@ -47,6 +48,7 @@ def request_rows(run_id: str, results: Iterable[dict[str, Any]]) -> list[dict[st
                 "decode_ms": completion.decode_ms,
                 "status": completion.status,
                 "error": completion.error,
+                "slot_id": completion.slot_id,
             })
     return rows
 

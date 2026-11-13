@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from scripts.run_experiment import estimate_peak_context, parse_args, run_experiment
-from tests.fake_llama_server import NORMAL_STREAM, FakeLlamaServer
+from tests.fake_llama_server import SLOT_STREAM, FakeLlamaServer
 
 WORKLOAD = {
     "name": "tiny_mix",
@@ -31,7 +31,7 @@ def read_csv(path):
 class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.fake = await FakeLlamaServer(total_slots=2).start()
-        self.fake.handler = FakeLlamaServer.stream(NORMAL_STREAM, delay_s=0.005)
+        self.fake.handler = FakeLlamaServer.stream(SLOT_STREAM, delay_s=0.005)
         self.tmp = tempfile.TemporaryDirectory()
         self.workload_path = Path(self.tmp.name) / "tiny_mix.json"
         self.workload_path.write_text(json.dumps(WORKLOAD))
@@ -61,6 +61,7 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
         # short_chat tasks send 1 request, agent tasks 2.
         self.assertEqual(len(requests), sum(1 if t["task_type"] == "short_chat" else 2 for t in tasks))
         self.assertTrue(all(r["prompt_tokens"] == "30" and r["cached_tokens"] == "12" for r in requests))
+        self.assertTrue(all(r["slot_id"] == "0" for r in requests))
         self.assertGreater(len(memory), 1)
         self.assertEqual(set(memory[0]), {"t", "gpu_mem_used_mb", "gpu_util_pct", "server_rss_mb",
                                           "slot_tokens_total", "server_requests_deferred"})

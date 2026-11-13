@@ -80,6 +80,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--timeout-s", type=float, default=300.0, help="per-request timeout, from dispatch")
     p.add_argument("--no-ignore-eos", action="store_true", help="let the model stop before max_tokens")
     p.add_argument("--no-cache-prompt", action="store_true", help="ask llama-server not to reuse cached prompt KV")
+    p.add_argument("--no-slot-id", action="store_true",
+                   help="don't ask llama-server which slot served each request (requests.csv slot_id blank)")
     # Run
     p.add_argument("--warmup", type=int, default=1, help="unrecorded short requests before the run")
     p.add_argument("--sample-interval-s", type=float, default=0.5)
@@ -215,6 +217,7 @@ async def run_experiment(args: argparse.Namespace) -> Path:
         timeout_s=args.timeout_s,
         ignore_eos=not args.no_ignore_eos,
         cache_prompt=not args.no_cache_prompt,
+        report_slot=not args.no_slot_id,
         clock=clock,
     )
     warnings: list[str] = []
@@ -277,7 +280,10 @@ async def run_experiment(args: argparse.Namespace) -> Path:
         }
 
         for i in range(args.warmup):
-            await client.complete([{"role": "user", "content": f"warmup {salt} {i}"}], max_tokens=8)
+            warm = await client.complete([{"role": "user", "content": f"warmup {salt} {i}"}], max_tokens=8)
+            if i == 0 and client.report_slot and warm.status == "ok" and warm.slot_id is None:
+                warn("llama-server did not report id_slot (no __verbose in the stream); "
+                     "requests.csv slot_id will be blank")
 
         clock.reset()
         scheduler = SCHEDULERS[args.scheduler](args.concurrency, clock=clock)
