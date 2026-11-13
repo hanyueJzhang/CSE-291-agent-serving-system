@@ -80,7 +80,7 @@ class SummarizeRunTests(unittest.TestCase):
 
     def test_counts_split_failures_and_exclude_them_from_latency(self):
         self.assertEqual(self.s["counts"], {
-            "tasks": 4, "tasks_ok": 2, "tasks_failed": 1, "tasks_timeout": 1,
+            "tasks": 4, "tasks_ok": 2, "tasks_failed": 1, "tasks_timeout": 1, "tasks_rejected": 0,
             "requests": 5, "requests_ok": 3, "requests_error": 1, "requests_timeout": 1,
         })
         self.assertEqual(self.s["top_errors"],

@@ -96,6 +96,35 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any("slots 2" in w for w in config["warnings"]))
         self.assertFalse(self.fake.bodies[0]["cache_prompt"])
 
+    async def test_agent_scheduler_and_admission_check(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "agent", "--scheduler", "agent", "--aging-s", "5", "--warmup", "0",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        self.assertEqual(config["scheduler"], {"name": "agent", "max_concurrency": 1,
+                                               "continuation_first": True, "aging_s": 5.0})
+        self.assertEqual(config["admission"]["max_context"], int(0.95 * 2048))
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
+
+        # A slot too small for any task: everything rejected, nothing sent.
+        self.fake.n_ctx = 10
+        sent = len(self.fake.bodies)
+        out_dir = await run_experiment(self.args("--run-id", "tiny", "--warmup", "0"))
+        tasks = read_csv(out_dir / "tasks.csv")
+        self.assertTrue(all(t["status"] == "rejected" for t in tasks))
+        self.assertEqual(len(self.fake.bodies), sent)
+        self.assertEqual(read_csv(out_dir / "requests.csv"), [])
+
+        # --no-admission-check restores the Phase 1 behaviour.
+        out_dir = await run_experiment(self.args("--run-id", "tiny_off", "--warmup", "0",
+                                                 "--no-admission-check"))
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
+
+    async def test_agent_flags_need_agent_scheduler(self):
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad", "--aging-s", "5"))
+        self.assertFalse((Path(self.tmp.name) / "bad").exists())
+
     async def test_refuses_to_overwrite_a_run(self):
         await run_experiment(self.args("--run-id", "same", "--num-tasks", "1"))
         with self.assertRaises(FileExistsError):

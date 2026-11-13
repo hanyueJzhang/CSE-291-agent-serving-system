@@ -102,6 +102,22 @@ def generate_tasks(workload: dict[str, Any]) -> list[dict[str, Any]]:
     return tasks
 
 
+def estimate_step_contexts(task: dict[str, Any]) -> dict[int, int]:
+    """For each LLM step, the estimated context it carries in from earlier steps
+    (0 when it starts a fresh context)."""
+    carried = {}
+    context = 0
+    for idx, step in enumerate(task["steps"]):
+        if step["kind"] == "tool":
+            context += _TOOL_RESULT_TOKENS + _TEMPLATE_TOKENS_PER_MESSAGE
+            continue
+        if not step.get("carry_context", False):
+            context = 0
+        carried[idx] = context
+        context += step["prompt_tokens"] + step["max_output_tokens"] + 2 * _TEMPLATE_TOKENS_PER_MESSAGE
+    return carried
+
+
 def estimate_peak_context(task: dict[str, Any]) -> int:
     """Approximate the largest context (prompt + output) any request of the task needs."""
     peak = context = 0

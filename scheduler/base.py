@@ -18,6 +18,13 @@ class Request:
     max_output_tokens: int = 0
     payload: Any = None
 
+    # Agent context, filled by the runner (workload/runner.py). Policies may use
+    # these; FIFO ignores them.
+    is_followup: bool = False          # extends context from an earlier LLM step of the task
+    history_tokens: int = 0            # estimated tokens of that carried context
+    remaining_llm_steps: int = 0       # LLM steps of the task after this one
+    peak_context: int = 0              # estimated largest context of the whole task
+
     # Set by the scheduler, in seconds on the scheduler's clock.
     t_arrive: float | None = None
     t_dispatch: float | None = None

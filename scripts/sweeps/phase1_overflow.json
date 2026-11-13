@@ -1,5 +1,5 @@
 {
-  "_comment": "Context overflow (report item 3): where do failures start? Same agent_3step context workloads as phase1_context, but on 2048-token slots (8192/4) so the larger ones outgrow the slot. Estimated peak context: p512 1720 (fits), p1024 2232 (last output truncated), p1536 2744 (step-2 output truncated, step-4 prompt rejected), p2048 3256 (step-0 prompt rejected). Expect run_experiment to warn 'may not fit'; that is the point. Rate 0.4 tasks/s, concurrency 4. Analyze with python -m analysis.overflow, which also counts truncated outputs that report status ok.",
+  "_comment": "Context overflow (report item 3): where do failures start? Same agent_3step context workloads as phase1_context, but on 2048-token slots (8192/4) so the larger ones outgrow the slot. Estimated peak context: p512 1720 (fits), p1024 2232 (last output truncated), p1536 2744 (step-2 output truncated, step-4 prompt rejected), p2048 3256 (step-0 prompt rejected). Expect run_experiment to warn 'may not fit'; that is the point. Rate 0.4 tasks/s, concurrency 4. Analyze with python -m analysis.overflow, which also counts truncated outputs that report status ok. Runs with --no-admission-check (added in Phase 2) so the overflow is still observed instead of rejected up front.",
   "name": "phase1_overflow",
   "dimensions": {
     "phase": 1,
@@ -20,7 +20,8 @@
     "--rate",
     "0.4",
     "--num-tasks",
-    "100"
+    "100",
+    "--no-admission-check"
   ],
   "runs": [
     {
