@@ -56,6 +56,14 @@ class PairedTests(unittest.TestCase):
         self.assertEqual(cf["summary"]["tasks_not_ok"]["mean_value"], 0.0)
         self.assertTrue(any("cf_44" in s for s in result["skipped"]))
 
+    def test_exclude(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "base_42", "fifo", 42, 4.0)
+            write(root, "cf_42", "cf", 42, 2.0)
+            names = [p.name for p in paired.find_runs([root], exclude=["cf_*"])]
+        self.assertEqual(names, ["base_42"])
+
 
 if __name__ == "__main__":
     unittest.main()
