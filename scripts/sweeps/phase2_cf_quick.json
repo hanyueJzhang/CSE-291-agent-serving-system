@@ -1,0 +1,39 @@
+{
+  "_comment": "Quick look at continuation-first (proposal 2.1): one run, W1 0.95X seed 42, c = 5, no aging. Its FIFO partner is w1_fifo_c5_l95 in phase2_diag (same seed, same settings, run the same evening). One seed only shows the direction, not significance; phase2_cf is the full paired comparison. Compare with: python -m analysis.paired results/phase2_diag results/phase2_cf_quick --baseline fifo (ignore the c = 4 rows). ~16 min.",
+  "name": "phase2_cf_quick",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_cf_quick"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_cf_l95",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 5,
+        "policy": "cf"
+      },
+      "args": [
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42",
+        "--scheduler",
+        "agent"
+      ]
+    }
+  ]
+}
