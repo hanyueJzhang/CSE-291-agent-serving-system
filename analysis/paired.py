@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fnmatch
 import json
 import statistics
 import sys
@@ -119,7 +120,8 @@ def run_metrics(run_dir: Path) -> dict[str, float]:
     }
 
 
-def find_runs(roots: list[Path]) -> list[Path]:
+def find_runs(roots: list[Path], exclude: list[str] | None = None) -> list[Path]:
+    """Run folders under roots; folder names matching an `exclude` glob are left out."""
     runs = []
     for root in roots:
         if (root / "requests.csv").is_file():
@@ -127,7 +129,7 @@ def find_runs(roots: list[Path]) -> list[Path]:
             continue
         runs.extend(sorted(p.parent for p in root.glob("*/requests.csv")
                            if ".incomplete-" not in p.parent.name))
-    return runs
+    return [r for r in runs if not any(fnmatch.fnmatch(r.name, pat) for pat in exclude or [])]
 
 
 def compare(run_dirs: list[Path], baseline: str, label_key: str = "policy",
@@ -211,9 +213,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label-key", default="policy", help="dimension that names the policy")
     parser.add_argument("--ignore", nargs="*", default=list(DEFAULT_IGNORE),
                         help="dimensions that do not define the workload instance")
+    parser.add_argument("--exclude", nargs="*", default=[],
+                        help="run folder name globs to leave out, e.g. 'w1_cf_*'")
     parser.add_argument("--json", type=Path, help="also write everything as JSON")
     args = parser.parse_args(argv)
-    result = compare(find_runs(args.roots), args.baseline, args.label_key, tuple(args.ignore))
+    result = compare(find_runs(args.roots, args.exclude), args.baseline, args.label_key, tuple(args.ignore))
     print_table(result)
     if args.json:
         args.json.write_text(json.dumps(result, indent=2, default=str) + "\n", encoding="utf-8")
