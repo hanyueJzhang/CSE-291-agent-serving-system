@@ -19,8 +19,9 @@ Metrics (ok tasks/requests only, plus failure counts):
   task_p50_s, task_p95_s     task latency (arrival to end, includes tool time)
   first_ttft_p95_s           a task's arrival to its first token (new-task
                              starvation check for continuation-first)
-  first_queue_mean_s         client queue wait of first steps
-  followup_queue_mean_s      client queue wait of follow-up steps
+  first_queue_mean_s         wait of first steps from ready to holding a slot
+                             (client queue + llama-server queue when c > slots)
+  followup_queue_mean_s      the same for follow-up steps
   followup_cached_pct        cached share of follow-up prompt tokens
   avoidable_reprefill_s      re-prefill of already-computed history (analysis.reprefill)
   throughput_tasks_s         ok tasks / makespan
@@ -84,7 +85,15 @@ def run_metrics(run_dir: Path) -> dict[str, float]:
             if _f(r["t_first_token"]) is not None and task_arrive.get(r["task_id"]) is not None]
 
     def queue(rows):
-        q = [_f(r["t_dispatch"]) - _f(r["t_arrive"]) for r in rows]
+        # Ready until the request actually got a slot: the client queue plus any
+        # wait inside llama-server (c > slots), estimated as in analysis/slot_trace.
+        q = []
+        for r in rows:
+            start = _f(r["t_dispatch"])
+            first, prefill = _f(r.get("t_first_token")), _f(r.get("prefill_ms")) or 0.0
+            if first is not None:
+                start = max(start, first - prefill / 1000)
+            q.append(start - _f(r["t_arrive"]))
         return sum(q) / len(q) if q else float("nan")
 
     fu_prompt = sum(int(r["prompt_tokens"] or 0) for r in followups)

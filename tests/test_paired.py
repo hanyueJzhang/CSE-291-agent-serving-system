@@ -25,7 +25,7 @@ def write(root: Path, name: str, policy: str, seed: int, queue: float) -> Path:
                      "prefill_ms": 100, "status": "ok"})
         reqs.append({"task_id": tid, "step_idx": 2, "t_arrive": f_arrive, "t_dispatch": f_dispatch,
                      "t_first_token": f_dispatch + 0.1, "t_finish": f_dispatch + 1.0, "prompt_tokens": 200,
-                     "cached_tokens": 110, "output_tokens": 10, "prefill_ms": 90, "status": "ok"})
+                     "cached_tokens": 110, "output_tokens": 10, "prefill_ms": 100, "status": "ok"})
         tasks.append({"task_id": tid, "task_type": "a", "t_arrive": t0, "t_finish": f_dispatch + 1.0,
                       "num_steps": 3, "status": "ok"})
     for fname, cols, rows in (("requests.csv", REQUEST_COLUMNS, reqs), ("tasks.csv", TASK_COLUMNS, tasks)):
