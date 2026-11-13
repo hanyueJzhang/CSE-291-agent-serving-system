@@ -1,0 +1,67 @@
+{
+  "_comment": "Quick look at continuation-first on the most queue-heavy seed: W1 0.95X seed 44, FIFO c = 5 vs cf (no aging), c = 5. In Phase 1 (c = 4), seed 44 queued 27.7 s per task vs 7.0 s on seed 42, so this is where reordering has the most to gain; phase2_cf_quick (seed 42) showed P95 33.6 -> 31.0 s. Same run_ids and settings as phase2_cf, so these can later be copied into results/phase2_cf. Compare with: python -m analysis.paired results/phase2_cf_quick_s44 --baseline fifo_c5. Two runs, ~32 min.",
+  "name": "phase2_cf_quick_s44",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_cf_quick_s44"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c5_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 5,
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44",
+        "--scheduler",
+        "fifo"
+      ]
+    },
+    {
+      "run_id": "w1_cf_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 5,
+        "policy": "cf"
+      },
+      "args": [
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44",
+        "--scheduler",
+        "agent"
+      ]
+    }
+  ]
+}
