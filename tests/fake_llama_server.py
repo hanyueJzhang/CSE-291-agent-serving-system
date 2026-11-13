@@ -40,10 +40,26 @@ USAGE_CHUNK = {
     },
 }
 
+def finish_chunk_with_slot(id_slot, finish_reason="length"):
+    """The final result's first chunk as llama-server sends it when the request has "verbose": true."""
+    event = chunk(finish_reason=finish_reason)
+    event["__verbose"] = {"id_slot": id_slot, "content": "", "stop": True}
+    return event
+
+
 NORMAL_STREAM = [
     sse(chunk("Hel")),
     sse(chunk("lo")),
     sse(chunk(finish_reason="length")),
+    sse(USAGE_CHUNK),
+    b"data: [DONE]\n\n",
+]
+
+# NORMAL_STREAM as llama-server sends it to a "verbose": true request served by slot 0.
+SLOT_STREAM = [
+    sse(chunk("Hel")),
+    sse(chunk("lo")),
+    sse(finish_chunk_with_slot(0)),
     sse(USAGE_CHUNK),
     b"data: [DONE]\n\n",
 ]

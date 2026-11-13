@@ -33,7 +33,7 @@ RESULTS = [
     ]),
     make_result("t1", "agent", "ok", 1.0, 5.0, [
         (1.0, 1.0, 2.0, Completion(text="b", prompt_tokens=100, cached_tokens=20, output_tokens=16, t_first_token=1.5)),
-        (3.0, 4.0, 5.0, Completion(text="c", prompt_tokens=200, cached_tokens=130, output_tokens=16, t_first_token=4.5)),
+        (3.0, 4.0, 5.0, Completion(text="c", prompt_tokens=200, cached_tokens=130, output_tokens=16, t_first_token=4.5, slot_id=1)),
     ]),
     make_result("t2", "short", "failed", 2.0, 3.0, [
         (2.0, 2.5, 3.0, Completion(status="error", error="HTTP 400")),
@@ -49,6 +49,8 @@ class RowsTests(unittest.TestCase):
         self.assertEqual(len(reqs), 4)
         self.assertEqual(reqs[2]["step_idx"], 1)
         self.assertEqual(reqs[2]["cached_tokens"], 130)
+        self.assertEqual(reqs[2]["slot_id"], 1)
+        self.assertIsNone(reqs[0]["slot_id"])
         self.assertEqual(reqs[2]["t_first_token"], 4.5)
         self.assertEqual(reqs[3]["status"], "error")
         self.assertEqual(set(reqs[0]), set(REQUEST_COLUMNS))

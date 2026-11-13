@@ -4,7 +4,9 @@ import unittest
 
 from aiohttp import web
 
-from tests.fake_llama_server import NORMAL_STREAM, USAGE_CHUNK, FakeLlamaServer, chunk, sse
+from tests.fake_llama_server import (
+    NORMAL_STREAM, USAGE_CHUNK, FakeLlamaServer, chunk, finish_chunk_with_slot, sse,
+)
 from workload.llama_client import LlamaClient, LlamaClientError
 
 
@@ -40,6 +42,36 @@ class LlamaClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(body["ignore_eos"])
         self.assertTrue(body["cache_prompt"])
         self.assertEqual(body["temperature"], 0.0)
+
+    async def test_asks_for_and_reads_the_serving_slot(self):
+        self.fake.handler = FakeLlamaServer.stream([
+            sse(chunk("Hi")),
+            sse(finish_chunk_with_slot(3)),
+            sse(USAGE_CHUNK),
+            b"data: [DONE]\n\n",
+        ])
+        result = await self.client.complete([{"role": "user", "content": "hi"}], max_tokens=2)
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.slot_id, 3)
+        self.assertEqual(result.text, "Hi")
+        self.assertIs(self.fake.bodies[0]["verbose"], True)
+        self.assertNotIn("id_slot", self.fake.bodies[0])
+
+    async def test_slot_id_blank_when_server_sends_no_verbose(self):
+        result = await self.client.complete([{"role": "user", "content": "hi"}], max_tokens=2)
+        self.assertEqual(result.status, "ok")
+        self.assertIsNone(result.slot_id)
+
+    async def test_pins_slot_and_can_skip_verbose(self):
+        client = LlamaClient(self.fake.url, timeout_s=2.0, report_slot=False)
+        try:
+            await client.complete([{"role": "user", "content": "hi"}], max_tokens=2, id_slot=2)
+        finally:
+            await client.close()
+        body = self.fake.bodies[0]
+        self.assertEqual(body["id_slot"], 2)
+        self.assertNotIn("verbose", body)
 
     async def test_generate_returns_text(self):
         text = await self.client.generate([{"role": "user", "content": "hi"}], max_tokens=2)
