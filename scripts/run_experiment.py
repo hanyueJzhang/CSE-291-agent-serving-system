@@ -32,7 +32,7 @@ from typing import Any
 
 import aiohttp
 
-from scheduler import FIFOScheduler
+from scheduler import SCHEDULERS, make_scheduler
 from workload.generator import estimate_peak_context, generate_tasks, load_workload
 from workload.llama_client import LlamaClient
 from workload.metrics import (
@@ -43,7 +43,7 @@ from workload.runner import run_workload
 from workload.sampler import MemorySampler, find_server_process
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEDULERS = {"fifo": FIFOScheduler}
+CONTEXT_MARGIN = 0.95   # estimates are approximate; same margin as the Mooncake fit filter
 
 
 class RunClock:
@@ -64,6 +64,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--workload", required=True, help="workload JSON, e.g. workload/tasks/example_mix.json")
     p.add_argument("--scheduler", default="fifo", choices=sorted(SCHEDULERS))
     p.add_argument("--concurrency", type=int, required=True, help="max requests in flight")
+    # Agent scheduler (--scheduler agent), proposal 2.1
+    p.add_argument("--no-continuation-first", action="store_true",
+                   help="agent scheduler: don't put ready follow-up steps ahead of first steps (= FIFO order)")
+    p.add_argument("--aging-s", type=float, default=None,
+                   help="agent scheduler: a first step that waited this long ranks with follow-ups (default: no aging)")
+    p.add_argument("--no-admission-check", action="store_true",
+                   help="run tasks whose estimated peak context exceeds the slot (Phase 1 behaviour: "
+                        "silent truncation or HTTP 400); by default they are rejected up front")
     p.add_argument("--url", default="http://localhost:8080", help="llama-server base URL")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
@@ -106,6 +114,15 @@ def parse_dimensions(raw: str) -> dict[str, Any]:
             f"invalid keys: {invalid}"
         )
     return dimensions
+
+
+def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
+    params: dict[str, Any] = {"max_concurrency": args.concurrency}
+    if args.scheduler == "agent":
+        params.update(continuation_first=not args.no_continuation_first, aging_s=args.aging_s)
+    elif args.no_continuation_first or args.aging_s is not None:
+        raise ValueError("--no-continuation-first / --aging-s only apply to --scheduler agent")
+    return params
 
 
 # ---- workload ----------------------------------------------------------------
@@ -198,6 +215,7 @@ async def server_info(base_url: str) -> dict[str, Any]:
 # ---- run ---------------------------------------------------------------------
 
 async def run_experiment(args: argparse.Namespace) -> Path:
+    scheduler_params(args)          # fail on bad scheduler flags before touching the server
     workload = build_workload(args)
     dimensions = parse_dimensions(args.dimensions_json)
     tasks = generate_tasks(workload)
@@ -241,11 +259,19 @@ async def run_experiment(args: argparse.Namespace) -> Path:
             warn(f"concurrency {args.concurrency} > llama-server slots {total_slots}: "
                  "extra requests queue inside llama-server, where our queue_s does not see them")
         n_ctx = server.get("n_ctx_per_slot")
+        max_context = None
         if n_ctx:
-            too_big = [t["id"] for t in tasks if estimate_peak_context(t) > 0.95 * n_ctx]
+            max_context = int(CONTEXT_MARGIN * n_ctx)
+            too_big = [t["id"] for t in tasks if estimate_peak_context(t) > max_context]
             if too_big:
+                consequence = ("expect context errors or truncated outputs" if args.no_admission_check
+                               else "they will be rejected without running (status 'rejected')")
                 warn(f"{len(too_big)} task(s) may not fit the {n_ctx}-token slot context "
-                     f"(estimated), e.g. {too_big[:3]}; expect context errors")
+                     f"(estimated), e.g. {too_big[:3]}; {consequence}")
+        elif not args.no_admission_check:
+            warn("llama-server did not report n_ctx per slot; admission check is off for this run")
+        if args.no_admission_check:
+            max_context = None
         if server.get("endpoint_metrics") is False:
             warn("llama-server /metrics is disabled (--metrics); server_requests_deferred will be blank")
         git = git_info()
@@ -286,8 +312,10 @@ async def run_experiment(args: argparse.Namespace) -> Path:
                      "requests.csv slot_id will be blank")
 
         clock.reset()
-        scheduler = SCHEDULERS[args.scheduler](args.concurrency, clock=clock)
+        scheduler = make_scheduler(args.scheduler, **scheduler_params(args), clock=clock)
         config["scheduler"] = scheduler.config()
+        config["admission"] = {"max_context": max_context, "context_margin": CONTEXT_MARGIN,
+                               "n_ctx_per_slot": n_ctx}
         out_dir.mkdir(parents=True)
         _write_json(out_dir / "run_config.json", config)
 
@@ -299,7 +327,7 @@ async def run_experiment(args: argparse.Namespace) -> Path:
         )
         await sampler.start()
         try:
-            results = await run_workload(tasks, scheduler, client, clock=clock)
+            results = await run_workload(tasks, scheduler, client, clock=clock, max_context=max_context)
         finally:
             memory = await sampler.stop()
     finally:
@@ -340,11 +368,11 @@ def print_check(
         values = [row[column] for row in memory if row.get(column) is not None]
         return f"{max(values):.0f}" if values else "-"
 
-    counts = {s: sum(t["status"] == s for t in tasks) for s in ("ok", "failed", "timeout")}
+    counts = {s: sum(t["status"] == s for t in tasks) for s in ("ok", "failed", "timeout", "rejected")}
     duration = max((t["t_finish"] for t in tasks), default=0.0)
     print(f"\n{run_id}  ->  {out_dir}")
     print(f"  tasks   ok {counts['ok']}/{len(tasks)}   failed {counts['failed']}   "
-          f"timeout {counts['timeout']}   duration {duration:.1f}s")
+          f"timeout {counts['timeout']}   rejected {counts['rejected']}   duration {duration:.1f}s")
     print(f"  peaks   gpu {peak('gpu_mem_used_mb')} MB   rss {peak('server_rss_mb')} MB   "
           f"slot tokens {peak('slot_tokens_total')}   server deferred {peak('server_requests_deferred')}")
     first_error = next((r["error"] for r in requests if r["error"]), None)

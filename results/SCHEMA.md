@@ -45,7 +45,7 @@ All timestamps are seconds since run start (monotonic clock).
 | num_steps | steps completed |
 | total_queue_s | sum of queueing time across steps |
 | total_tool_s | sum of tool delays |
-| status | ok / failed / timeout |
+| status | ok / failed / timeout / rejected (estimated peak context > 0.95 × slot context; never dispatched, see `admission` in run_config.json) |
 
 ## memory.csv
 | column | meaning |

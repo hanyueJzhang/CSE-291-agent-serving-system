@@ -218,6 +218,7 @@ def summarize_run(run: dict[str, Any]) -> dict[str, Any]:
             "tasks_ok": len(ok_tasks),
             "tasks_failed": task_status["failed"],
             "tasks_timeout": task_status["timeout"],
+            "tasks_rejected": task_status["rejected"],
             "requests": len(requests),
             "requests_ok": len(ok_requests),
             "requests_error": request_status["error"],
@@ -281,7 +282,7 @@ def format_summary(s: dict[str, Any]) -> str:
         f"  setup     {s['scheduler']} c={s['concurrency']}  workload {s['workload']}  "
         f"rate {s['rate_per_s']}/s  seed {s['seed']}  slots {s['server_slots']} x {s['ctx_per_slot']} tok  "
         f"prompt cache {({True: 'on', False: 'OFF'}).get(s['cache_prompt'], '?')}",
-        f"  counts    tasks ok {c['tasks_ok']}/{c['tasks']} (failed {c['tasks_failed']}, timeout {c['tasks_timeout']})   "
+        f"  counts    tasks ok {c['tasks_ok']}/{c['tasks']} (failed {c['tasks_failed']}, timeout {c['tasks_timeout']}, rejected {c.get('tasks_rejected', 0)})   "
         f"requests ok {c['requests_ok']}/{c['requests']} (error {c['requests_error']}, timeout {c['requests_timeout']})",
         f"  makespan  {_fmt(s['makespan_s'], 1)} s   "
         f"tasks/s {_fmt(s['throughput']['tasks_per_s'], 3)}   "
@@ -361,6 +362,7 @@ TABLE_COLUMNS = [
     ("tasks_ok", lambda s: s["counts"]["tasks_ok"]),
     ("tasks_failed", lambda s: s["counts"]["tasks_failed"]),
     ("tasks_timeout", lambda s: s["counts"]["tasks_timeout"]),
+    ("tasks_rejected", lambda s: s["counts"].get("tasks_rejected", 0)),
     ("requests_error", lambda s: s["counts"]["requests_error"]),
     ("requests_timeout", lambda s: s["counts"]["requests_timeout"]),
     ("makespan_s", lambda s: s["makespan_s"]),
