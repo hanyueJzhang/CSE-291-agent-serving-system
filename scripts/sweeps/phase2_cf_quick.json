@@ -1,5 +1,5 @@
 {
-  "_comment": "Quick look at continuation-first (proposal 2.1): one run, W1 0.95X seed 42, c = 5, no aging. Its FIFO partner is w1_fifo_c5_l95 in phase2_diag (same seed, same settings, run the same evening). One seed only shows the direction, not significance; phase2_cf is the full paired comparison. Compare with: python -m analysis.paired results/phase2_diag results/phase2_cf_quick --baseline fifo (ignore the c = 4 rows). ~16 min.",
+  "_comment": "Quick look at continuation-first (proposal 2.1): one run, W1 0.95X seed 42, c = 5, no aging. Its FIFO partner is w1_fifo_c5_l95 in phase2_diag (same seed, same settings, run the same evening). One seed only shows the direction, not significance; phase2_cf is the full paired comparison. Compare with: python -m analysis.paired results/phase2_diag results/phase2_cf_quick --baseline fifo --ignore experiment phase cache_ram_mb (keeping concurrency in the key pairs cf with the c = 5 run, not c = 4). ~16 min.",
   "name": "phase2_cf_quick",
   "dimensions": {
     "phase": 2,
