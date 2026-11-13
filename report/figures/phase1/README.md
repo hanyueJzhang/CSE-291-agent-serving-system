@@ -78,7 +78,7 @@ These four main figures answer different baseline questions:
 python -m analysis.reporting.reprefill_figure
 ```
 
-Left: the share of GPU-busy time spent re-prefilling history that a follow-up had already processed (`analysis/reprefill.py`), for W1 at 0.50X/0.75X/0.95X and the output-scaled control, with the host cache off and at 8 GiB. Right: task P95 for the same runs. Bars are seed means, whiskers min-max, dots individual seeds; W1 0.75X with the cache is seed 42 only. Re-prefill grows with load (4% to 19%) and roughly doubles when outputs are scaled with inputs (37%); the cache cuts it to 1-6%. Tail latency varies much more across seeds than re-prefill does, because near saturation small differences in sampled load are amplified by queueing.
+Left: the share of GPU-busy time spent re-prefilling history that a follow-up had already processed (`analysis/reprefill.py`), for W1 at 0.50X/0.75X/0.95X at the tuned FIFO concurrency of five and the output-scaled control at concurrency four, with the host cache off and at 8 GiB. Right: task P95 for the same runs. Bars are means over seeds 42-44, whiskers min-max, dots individual seeds. Re-prefill grows with load (4% to 17%) and roughly doubles when outputs are scaled with inputs (37%); the 8 GiB cache cuts it to 2-6%. At concurrency five the cache removes re-prefill without lowering W1 0.95X task P95 (42 s vs. 40 s), whereas at concurrency four on the output-scaled control it does lower P95.
 
 ## Overall Phase 1 finding
 

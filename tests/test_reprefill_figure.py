@@ -6,11 +6,12 @@ from analysis.reporting import reprefill_figure as fig
 
 
 class ReprefillFigureTest(unittest.TestCase):
-    def test_collects_three_seeds_where_repeated(self):
+    def test_collects_three_seeds_per_bar(self):
         data = fig.collect()
-        self.assertEqual(len(data["W1\n0.95X"]["off"]), 3)
-        self.assertEqual(len(data["W1\n0.95X"]["on"]), 3)
-        self.assertEqual(len(data["W1\n0.75X"]["on"]), 1)
+        for label, caches in data.items():
+            for cache, runs in caches.items():
+                self.assertEqual(len(runs), 3, (label, cache))
+        self.assertNotIn("on", data["W1\n0.75X"])
 
     def test_render_writes_png_and_pdf(self):
         with tempfile.TemporaryDirectory() as tmp:
