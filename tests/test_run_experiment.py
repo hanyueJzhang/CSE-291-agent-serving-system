@@ -1,4 +1,6 @@
 import csv
+from contextlib import redirect_stderr
+import io
 import json
 import tempfile
 import unittest
@@ -94,6 +96,38 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(config["client"]["cache_prompt"])
         self.assertTrue(any("slots 2" in w for w in config["warnings"]))
         self.assertFalse(self.fake.bodies[0]["cache_prompt"])
+
+    async def test_adaptive_scheduler_writes_feedback_log(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "adaptive", "--scheduler", "adaptive", "--concurrency", "2",
+            "--adaptive-min-concurrency", "1", "--adaptive-initial-concurrency", "1",
+            "--adaptive-window-s", "0.01", "--adaptive-min-completions", "1", "--warmup", "0",
+            "--adaptive-cooldown-s", "0.02", "--adaptive-max-cooldown-s", "0.1",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        events = json.loads((out_dir / "scheduler_events.json").read_text())
+        self.assertEqual(config["scheduler"]["name"], "adaptive")
+        self.assertEqual(config["scheduler"]["max_concurrency"], 2)
+        self.assertEqual(config["scheduler"]["initial_concurrency"], 1)
+        self.assertEqual(config["scheduler"]["cooldown_s"], 0.02)
+        self.assertEqual(config["scheduler"]["max_cooldown_s"], 0.1)
+        self.assertTrue(events)
+        self.assertEqual(events[-1]["reason"], "run_end")
+        self.assertTrue(all(1 <= e["next_concurrency"] <= 2 for e in events))
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
+        self.assertEqual(len(read_csv(out_dir / "tasks.csv")), 4)
+
+    def test_invalid_adaptive_options_fail_before_contacting_server(self):
+        for extra in [
+            ["--scheduler", "adaptive", "--adaptive-min-concurrency", "2"],
+            ["--scheduler", "adaptive", "--adaptive-window-s", "0"],
+            ["--adaptive-initial-concurrency", "1"],
+            ["--adaptive-cooldown-s", "0"],
+            ["--scheduler", "adaptive", "--adaptive-cooldown-s", "-1"],
+            ["--scheduler", "adaptive", "--adaptive-cooldown-s", "5", "--adaptive-max-cooldown-s", "4"],
+        ]:
+            with self.subTest(extra=extra), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.args(*extra)
 
     async def test_refuses_to_overwrite_a_run(self):
         await run_experiment(self.args("--run-id", "same", "--num-tasks", "1"))

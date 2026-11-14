@@ -14,6 +14,10 @@ Every run writes one folder: `results/<run_id>/` containing
 - `requests.csv`: one row per LLM request (agent step).
 - `tasks.csv`: one row per agent task.
 - `memory.csv`: periodic memory samples.
+- `scheduler_events.json` (adaptive only): window measurements and concurrency
+  decisions; controller settings are recorded in `run_config.json.scheduler`.
+  Each event includes the observed/next concurrency, throughput, latency,
+  decision, reason, and earliest next probe time (`next_probe_at`).
 
 All timestamps are seconds since run start (monotonic clock).
 

@@ -1,0 +1,56 @@
+{
+  "_comment": "Adaptive-only W1 0.95X pilot; reuse existing FIFO c=5 measurements rather than rerunning them. Match historical baselines by seed, workload, target task count, model/runtime and server settings. Adaptive c=4..6 starts at 5, on four 6144-token slots with host cache disabled. Seed 42 is the first development run; seeds 43-45 provide repeats. Target 282 tasks per run (whole-family sampling can overshoot). Controller defaults: backlog fraction 0.5, improvement 0.05, throughput tolerance 0.03, latency tolerance 0.20. Keep parameters frozen across repeats; use a new plan/result name for subsequent tuning. Each run restarts the server. Rerunning resumes completed runs. The generated sweep.csv contains adaptive runs only; historical FIFO results must be included separately for comparison. This is not a full evaluation of changing loads or workload mixes.",
+  "name": "phase2_adaptive_pilot",
+  "server": {"CTX": 24576, "PARALLEL": 4, "CACHE_RAM": 0},
+  "dimensions": {
+    "phase": 2,
+    "experiment": "adaptive_pilot",
+    "workload_family": "mooncake_toolagent",
+    "trace_window": "W1",
+    "load_fraction": 0.95,
+    "cache_ram_mb": 0
+  },
+  "args": ["--workload", "workload/tasks/mooncake_w1.json", "--num-tasks", "282"],
+  "runs": [
+    {
+      "run_id": "w1_adaptive_c4to6_l95_s42",
+      "dimensions": {"policy": "adaptive", "seed": 42, "concurrency_min": 4, "concurrency_max": 6, "concurrency_initial": 5},
+      "args": [
+        "--scheduler", "adaptive", "--concurrency", "6", "--seed", "42",
+        "--adaptive-min-concurrency", "4", "--adaptive-initial-concurrency", "5",
+        "--adaptive-window-s", "15", "--adaptive-min-completions", "8",
+        "--adaptive-cooldown-s", "30", "--adaptive-max-cooldown-s", "120"
+      ]
+    },
+    {
+      "run_id": "w1_adaptive_c4to6_l95_s43",
+      "dimensions": {"policy": "adaptive", "seed": 43, "concurrency_min": 4, "concurrency_max": 6, "concurrency_initial": 5},
+      "args": [
+        "--scheduler", "adaptive", "--concurrency", "6", "--seed", "43",
+        "--adaptive-min-concurrency", "4", "--adaptive-initial-concurrency", "5",
+        "--adaptive-window-s", "15", "--adaptive-min-completions", "8",
+        "--adaptive-cooldown-s", "30", "--adaptive-max-cooldown-s", "120"
+      ]
+    },
+    {
+      "run_id": "w1_adaptive_c4to6_l95_s44",
+      "dimensions": {"policy": "adaptive", "seed": 44, "concurrency_min": 4, "concurrency_max": 6, "concurrency_initial": 5},
+      "args": [
+        "--scheduler", "adaptive", "--concurrency", "6", "--seed", "44",
+        "--adaptive-min-concurrency", "4", "--adaptive-initial-concurrency", "5",
+        "--adaptive-window-s", "15", "--adaptive-min-completions", "8",
+        "--adaptive-cooldown-s", "30", "--adaptive-max-cooldown-s", "120"
+      ]
+    },
+    {
+      "run_id": "w1_adaptive_c4to6_l95_s45",
+      "dimensions": {"policy": "adaptive", "seed": 45, "concurrency_min": 4, "concurrency_max": 6, "concurrency_initial": 5},
+      "args": [
+        "--scheduler", "adaptive", "--concurrency", "6", "--seed", "45",
+        "--adaptive-min-concurrency", "4", "--adaptive-initial-concurrency", "5",
+        "--adaptive-window-s", "15", "--adaptive-min-completions", "8",
+        "--adaptive-cooldown-s", "30", "--adaptive-max-cooldown-s", "120"
+      ]
+    }
+  ]
+}

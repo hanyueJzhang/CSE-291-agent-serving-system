@@ -32,7 +32,7 @@ from typing import Any
 
 import aiohttp
 
-from scheduler import FIFOScheduler
+from scheduler import SCHEDULERS, make_scheduler
 from workload.generator import estimate_peak_context, generate_tasks, load_workload
 from workload.llama_client import LlamaClient
 from workload.metrics import (
@@ -43,7 +43,6 @@ from workload.runner import run_workload
 from workload.sampler import MemorySampler, find_server_process
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEDULERS = {"fifo": FIFOScheduler}
 
 
 class RunClock:
@@ -63,7 +62,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--workload", required=True, help="workload JSON, e.g. workload/tasks/example_mix.json")
     p.add_argument("--scheduler", default="fifo", choices=sorted(SCHEDULERS))
-    p.add_argument("--concurrency", type=int, required=True, help="max requests in flight")
+    p.add_argument("--concurrency", type=int, required=True, help="max requests in flight (hard upper bound for adaptive)")
+    adaptive = p.add_argument_group("adaptive scheduler")
+    adaptive.add_argument("--adaptive-min-concurrency", type=int, default=1)
+    adaptive.add_argument("--adaptive-initial-concurrency", type=int)
+    adaptive.add_argument("--adaptive-window-s", type=float, default=15.0)
+    adaptive.add_argument("--adaptive-min-completions", type=int, default=8)
+    adaptive.add_argument("--adaptive-cooldown-s", type=float, default=30.0)
+    adaptive.add_argument("--adaptive-max-cooldown-s", type=float, default=120.0)
     p.add_argument("--url", default="http://localhost:8080", help="llama-server base URL")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
@@ -85,7 +91,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--sample-interval-s", type=float, default=0.5)
     p.add_argument("--ready-timeout-s", type=float, default=60.0)
     p.add_argument("--skip-env-check", action="store_true", help="don't run setup/check_env.sh")
-    return p.parse_args(argv)
+    args = p.parse_args(argv)
+    try:
+        build_scheduler(args)
+    except ValueError as exc:
+        p.error(str(exc))
+    if args.scheduler != "adaptive" and (
+        args.adaptive_min_concurrency != 1 or args.adaptive_initial_concurrency is not None
+        or args.adaptive_window_s != 15.0 or args.adaptive_min_completions != 8
+        or args.adaptive_cooldown_s != 30.0 or args.adaptive_max_cooldown_s != 120.0
+    ):
+        p.error("--adaptive-* options require --scheduler adaptive")
+    return args
+
+
+def build_scheduler(args: argparse.Namespace, **kwargs):
+    params = {"max_concurrency": args.concurrency, **kwargs}
+    if args.scheduler == "adaptive":
+        params.update(
+            min_concurrency=args.adaptive_min_concurrency,
+            initial_concurrency=args.adaptive_initial_concurrency,
+            window_s=args.adaptive_window_s,
+            min_completions=args.adaptive_min_completions,
+            cooldown_s=args.adaptive_cooldown_s,
+            max_cooldown_s=args.adaptive_max_cooldown_s,
+        )
+    return make_scheduler(args.scheduler, **params)
 
 
 def parse_dimensions(raw: str) -> dict[str, Any]:
@@ -280,7 +311,7 @@ async def run_experiment(args: argparse.Namespace) -> Path:
             await client.complete([{"role": "user", "content": f"warmup {salt} {i}"}], max_tokens=8)
 
         clock.reset()
-        scheduler = SCHEDULERS[args.scheduler](args.concurrency, clock=clock)
+        scheduler = build_scheduler(args, clock=clock)
         config["scheduler"] = scheduler.config()
         out_dir.mkdir(parents=True)
         _write_json(out_dir / "run_config.json", config)
@@ -304,6 +335,10 @@ async def run_experiment(args: argparse.Namespace) -> Path:
     write_csv(out_dir / "requests.csv", REQUEST_COLUMNS, requests)
     write_csv(out_dir / "tasks.csv", TASK_COLUMNS, task_records)
     write_csv(out_dir / "memory.csv", MEMORY_COLUMNS, memory)
+    if args.scheduler == "adaptive":
+        scheduler.finish()
+        _write_json(out_dir / "scheduler_events.json", scheduler.events)
+        config["scheduler_final_concurrency"] = scheduler.current_concurrency
 
     config.update({
         "status": "done",

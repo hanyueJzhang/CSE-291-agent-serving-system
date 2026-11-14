@@ -74,6 +74,9 @@ async def run_task(
                 messages=list(context),
                 max_tokens=step["max_output_tokens"],
             )
+            on_completion = getattr(scheduler, "on_completion", None)
+            if on_completion is not None:
+                on_completion(request, status=completion.status, output_tokens=completion.output_tokens)
 
         requests.append(request)
         completions.append(completion)

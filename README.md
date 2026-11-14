@@ -78,6 +78,11 @@ python -m scripts.run_experiment --workload workload/tasks/example_mix.json --sc
 # prompt-cache ablation: --no-cache-prompt
 ```
 
+An experimental `--scheduler adaptive` policy probes bounded request concurrency
+using backlog and completion feedback. The [adaptive pilot sweep](scripts/sweeps/phase2_adaptive_pilot.json)
+runs adaptive only for comparison with existing FIFO c=5 measurements;
+adaptive runs also write `scheduler_events.json`.
+
 Then summarize the run (latency percentiles, throughput, prompt-cache reuse, memory peaks; definitions in [analysis/METRICS.md](analysis/METRICS.md)):
 
 ```bash
