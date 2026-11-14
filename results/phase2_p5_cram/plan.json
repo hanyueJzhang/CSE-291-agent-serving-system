@@ -1,0 +1,95 @@
+{
+  "_comment": "Get the shared pool's queueing gain and the host cache's re-prefill gain without --kv-unified (which collapsed throughput by 44% together with --cache-ram): 5 ordinary 6144-token slots (CTX 30720, +768 MiB KV vs the 4-slot baseline) + 4 GiB host cache, client concurrency 6 (one request waits inside llama-server, as in the c5 baseline). Seeds 42-44, three runs, ~45 min. If the server fails to start for lack of GPU memory, the sweep logs it and moves on. Compare with: python -m analysis.paired results/phase2_diag results/phase2_cf_quick_s44 results/phase2_kvu_seeds results/phase2_kvu_capped results/cache_budget results/phase2_p5_cram --label-key concurrency cache_ram_mb --baseline 5/0 --ignore experiment phase policy --exclude 'w1_cf_*'",
+  "name": "phase2_p5_cram",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_p5_cram"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_l95_s42",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "6_p5",
+        "policy": "fifo_c6_p5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_l95_s43",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "6_p5",
+        "policy": "fifo_c6_p5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_l95_s44",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "6_p5",
+        "policy": "fifo_c6_p5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}

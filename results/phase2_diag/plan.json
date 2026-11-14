@@ -1,0 +1,65 @@
+{
+  "_comment": "Phase 2 pre-diagnostics (proposal 2.5): W1 at 0.95X with FIFO c = 4 and c = 5, seed 42, same 282 tasks and server settings as w1_concurrency / mooncake_baseline, but requests.csv now records slot_id. Feeds analysis.slot_replay (placement headroom: LRU vs dead-first vs hold) and analysis.slot_gaps (is the c = 5 gain hidden dispatch gaps or better slot choice). Two runs, ~40 min. Ctrl+C after any run is safe; rerunning resumes.",
+  "name": "phase2_diag",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_diag",
+    "policy": "fifo"
+  },
+  "args": [
+    "--scheduler",
+    "fifo"
+  ],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c4_l95",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 4
+      },
+      "args": [
+        "--concurrency",
+        "4",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c5_l95",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": 5
+      },
+      "args": [
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    }
+  ]
+}
