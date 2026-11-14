@@ -1,10 +1,12 @@
 from .base import Request, Scheduler
+from .adaptive import AdaptiveScheduler
 from .agent import AgentScheduler
 from .fifo import FIFOScheduler
 
 SCHEDULERS: dict[str, type[Scheduler]] = {
     FIFOScheduler.name: FIFOScheduler,
     AgentScheduler.name: AgentScheduler,
+    AdaptiveScheduler.name: AdaptiveScheduler,
 }
 
 
@@ -17,4 +19,4 @@ def make_scheduler(name: str, **params) -> Scheduler:
     return cls(**params)
 
 
-__all__ = ["Request", "Scheduler", "FIFOScheduler", "AgentScheduler", "SCHEDULERS", "make_scheduler"]
+__all__ = ["Request", "Scheduler", "FIFOScheduler", "AgentScheduler", "AdaptiveScheduler", "SCHEDULERS", "make_scheduler"]
