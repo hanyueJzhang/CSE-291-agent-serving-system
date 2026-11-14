@@ -11,7 +11,8 @@ versus the baseline run of that seed, and their mean ± sample std. Raw values
 per seed are kept in the JSON.
 
 Runs are grouped by their run_config.json dimensions: the policy label is the
-`policy` dimension (or --label-key), pairing uses `seed` plus every other
+`policy` dimension (or --label-key, which may name several dimensions joined
+with '/'), pairing uses `seed` plus every other
 dimension except the label and those in --ignore (default: experiment, phase,
 cache_ram_mb, concurrency, which vary with the policy).
 
@@ -132,18 +133,19 @@ def find_runs(roots: list[Path], exclude: list[str] | None = None) -> list[Path]
     return [r for r in runs if not any(fnmatch.fnmatch(r.name, pat) for pat in exclude or [])]
 
 
-def compare(run_dirs: list[Path], baseline: str, label_key: str = "policy",
+def compare(run_dirs: list[Path], baseline: str, label_key: str | list[str] = "policy",
             ignore: tuple[str, ...] = DEFAULT_IGNORE) -> dict[str, Any]:
+    keys = [label_key] if isinstance(label_key, str) else list(label_key)
     by_key: dict[tuple, dict[str, tuple[Path, dict[str, float]]]] = {}
     skipped = []
     for run_dir in run_dirs:
         config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
         dims = dict(config.get("dimensions") or {})
-        label = dims.pop(label_key, None)
-        if label is None:
-            skipped.append(f"{run_dir}: no '{label_key}' dimension")
+        parts = [dims.pop(k, None) for k in keys]
+        if all(p is None for p in parts):
+            skipped.append(f"{run_dir}: no '{'/'.join(keys)}' dimension")
             continue
-        label = str(label)
+        label = "/".join("-" if p is None else str(p) for p in parts)
         for k in ignore:
             dims.pop(k, None)
         key = tuple(sorted(dims.items()))
@@ -210,7 +212,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("roots", nargs="+", type=Path, help="run folders, or sweep folders containing them")
     parser.add_argument("--baseline", required=True, help="label of the baseline policy, e.g. fifo_c5")
-    parser.add_argument("--label-key", default="policy", help="dimension that names the policy")
+    parser.add_argument("--label-key", nargs="+", default=["policy"],
+                        help="dimension(s) that name the policy; several are joined with '/', "
+                             "e.g. --label-key concurrency cache_ram_mb gives labels like 5/4096")
     parser.add_argument("--ignore", nargs="*", default=list(DEFAULT_IGNORE),
                         help="dimensions that do not define the workload instance")
     parser.add_argument("--exclude", nargs="*", default=[],

@@ -56,6 +56,20 @@ class PairedTests(unittest.TestCase):
         self.assertEqual(cf["summary"]["tasks_not_ok"]["mean_value"], 0.0)
         self.assertTrue(any("cf_44" in s for s in result["skipped"]))
 
+    def test_label_from_several_dimensions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, policy, extra in (("base", "fifo", {"cache_ram_mb": 0}), ("host", "fifo", {"cache_ram_mb": 4096}),
+                                        ("kvu", "kvu", {"cache_ram_mb": 0})):
+                run = write(root, name, policy, 42, 2.0)
+                cfg = json.loads((run / "run_config.json").read_text())
+                cfg["dimensions"].update(extra)
+                (run / "run_config.json").write_text(json.dumps(cfg))
+            result = paired.compare(paired.find_runs([root]), baseline="fifo/0",
+                                    label_key=["policy", "cache_ram_mb"], ignore=("experiment",))
+        self.assertEqual(set(result["policies"]), {"fifo/0", "fifo/4096", "kvu/0"})
+        self.assertEqual(result["skipped"], [])
+
     def test_exclude(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
