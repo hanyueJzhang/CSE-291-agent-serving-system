@@ -73,6 +73,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="run tasks whose estimated peak context exceeds the slot (Phase 1 behaviour: "
                         "silent truncation or HTTP 400); by default they are rejected up front")
     p.add_argument("--url", default="http://localhost:8080", help="llama-server base URL")
+    # Adaptive scheduler (--scheduler adaptive): --concurrency is the starting limit
+    p.add_argument("--target-server-queue", type=float, default=None,
+                   help="adaptive: target average number of requests waiting inside llama-server (default 0.75)")
+    p.add_argument("--adapt-window", type=int, default=None,
+                   help="adaptive: completions per feedback window (default 16)")
+    p.add_argument("--overload-wait-s", type=float, default=None,
+                   help="adaptive: follow-ups go first while a first step has waited this long (default: off)")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
     # Workload overrides, so sweeps don't need one JSON file per point.
@@ -122,6 +129,12 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
         params.update(continuation_first=not args.no_continuation_first, aging_s=args.aging_s)
     elif args.no_continuation_first or args.aging_s is not None:
         raise ValueError("--no-continuation-first / --aging-s only apply to --scheduler agent")
+    adaptive = {"target_server_queue": args.target_server_queue, "window": args.adapt_window,
+                "overload_wait_s": args.overload_wait_s}
+    if args.scheduler == "adaptive":
+        params.update({k: v for k, v in adaptive.items() if v is not None})
+    elif any(v is not None for v in adaptive.values()):
+        raise ValueError("--target-server-queue / --adapt-window / --overload-wait-s only apply to --scheduler adaptive")
     return params
 
 
@@ -339,6 +352,9 @@ async def run_experiment(args: argparse.Namespace) -> Path:
     write_csv(out_dir / "tasks.csv", TASK_COLUMNS, task_records)
     write_csv(out_dir / "memory.csv", MEMORY_COLUMNS, memory)
 
+    if hasattr(scheduler, "summary"):
+        config["scheduler_summary"] = scheduler.summary()
+        config["scheduler_trace"] = scheduler.trace
     config.update({
         "status": "done",
         "ended_at": datetime.now().astimezone().isoformat(),

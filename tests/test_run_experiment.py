@@ -120,6 +120,21 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
                                                  "--no-admission-check"))
         self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
 
+    async def test_adaptive_scheduler_records_trace(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "adapt", "--scheduler", "adaptive", "--adapt-window", "2",
+            "--overload-wait-s", "30", "--warmup", "0",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        self.assertEqual(config["scheduler"]["name"], "adaptive")
+        self.assertEqual(config["scheduler"]["window"], 2)
+        self.assertEqual(config["scheduler"]["overload_wait_s"], 30.0)
+        self.assertIn("final_limit", config["scheduler_summary"])
+        self.assertIsInstance(config["scheduler_trace"], list)
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad2", "--overload-wait-s", "5"))
+
     async def test_agent_flags_need_agent_scheduler(self):
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad", "--aging-s", "5"))

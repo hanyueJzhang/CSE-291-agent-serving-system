@@ -95,6 +95,9 @@ async def run_task(
                 messages=list(context),
                 max_tokens=step["max_output_tokens"],
             )
+            observe = getattr(scheduler, "observe", None)
+            if observe is not None:
+                observe(request, completion)
 
         requests.append(request)
         completions.append(completion)

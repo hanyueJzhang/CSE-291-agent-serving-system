@@ -59,6 +59,12 @@ class Scheduler:
         """
         raise NotImplementedError
 
+    def observe(self, req: Request, completion: Any) -> None:
+        """Feedback hook: called with the finished request's Completion before release().
+
+        The default ignores it; adaptive policies use the server-reported timings.
+        """
+
     def config(self) -> dict:
         """Policy name and parameters, for run_config.json."""
         return {"name": self.name}
