@@ -79,6 +79,22 @@ oracle victim, plus a hold-threshold table) and reports how much carried agent
 history each would keep. `slot_gaps` checks whether c = 5 beats c = 4 by hiding
 dispatch gaps or by better slot choice.
 
+## Phase 2 adaptive admission scheduler
+
+`--scheduler adaptive` (`scheduler/adaptive.py`) tunes the in-flight limit
+online instead of taking a fixed `--concurrency` (which becomes the starting
+limit). After each window of completions it estimates how many requests waited
+inside llama-server (Little's law on first token - prefill - dispatch), raises
+the limit while slots go idle and work is held back, and lowers it when a
+hidden server queue builds up, so it settles near "all slots busy + one
+waiting" on any slot count. With `--overload-wait-s S`, ready follow-up steps
+go first while some first step has waited S seconds. The limit over time is in
+`run_config.json` (`scheduler_summary`, `scheduler_trace`).
+
+```bash
+python -m scripts.sweep scripts/sweeps/phase2_adaptive.json   # 13 runs, ~3.5 h; compare commands in its _comment
+```
+
 ## Keeping environments consistent
 
 Only the machine that produces reported numbers must match exactly; dev machines just need to run the code.
