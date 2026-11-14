@@ -1,0 +1,182 @@
+{
+  "_comment": "Stress check for the Phase 2 main line: W1 at 1.15X load (341 tasks in the 900 s window, ~20% above the 0.31 tasks/s the GPU sustains, so the queue keeps growing). FIFO c = 5 on 4 slots vs 8-slot shared pool with 6 in flight, seeds 42-44, paired by seed (each seed's pair runs back to back, so stopping early still leaves complete pairs). Six runs, ~2 h. Compare with: python -m analysis.paired results/phase2_stress --label-key concurrency --baseline 5 --ignore experiment phase cache_ram_mb policy",
+  "name": "phase2_stress",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_stress"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c5_l115_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_kvu8_l115_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "6_kvu8",
+        "policy": "fifo_c6_kvu8"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c5_l115_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_kvu8_l115_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "6_kvu8",
+        "policy": "fifo_c6_kvu8"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c5_l115_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_kvu8_l115_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "6_kvu8",
+        "policy": "fifo_c6_kvu8"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}
