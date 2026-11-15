@@ -1,0 +1,205 @@
+import asyncio
+import unittest
+
+from scheduler import LeaseScheduler, Request, make_scheduler
+from tests.fakes import FakeModelClient
+from tests.test_runner import generate_test_tasks
+from tests.test_scheduler import FakeClock, settle
+from workload.llama_client import Completion
+from workload.runner import run_task
+
+
+def first(task_id, more_steps=1, prompt=""):
+    return Request(task_id=task_id, step_idx=0, task_type="agent",
+                   remaining_llm_steps=more_steps, task_prompt=prompt)
+
+
+def followup(task_id, step_idx=2, more_steps=0):
+    return Request(task_id=task_id, step_idx=step_idx, task_type="agent",
+                   is_followup=True, remaining_llm_steps=more_steps)
+
+
+class LeaseSchedulerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_one_request_per_slot(self):
+        s = LeaseScheduler(2)
+        reqs = [first(f"t{i}") for i in range(3)]
+        tasks = [asyncio.create_task(s.acquire(r)) for r in reqs]
+        await settle()
+        self.assertEqual([t.done() for t in tasks], [True, True, False])
+        self.assertEqual({reqs[0].slot, reqs[1].slot}, {0, 1})
+        self.assertIsNone(reqs[2].slot)
+
+    async def test_followup_returns_to_its_held_slot_ahead_of_new_task(self):
+        clock = FakeClock()
+        s = LeaseScheduler(1, hold_max_s=2.0, clock=clock)
+        a0 = first("A")
+        await s.acquire(a0)
+        new = first("N", more_steps=0)
+        t_new = asyncio.create_task(s.acquire(new))
+        await settle()
+        s.release(a0)                       # A goes to its tool; the slot is held
+        await settle()
+        self.assertFalse(t_new.done())
+
+        clock.now = 1.0
+        a1 = followup("A")
+        await asyncio.wait_for(s.acquire(a1), 1)
+        self.assertEqual(a1.slot, a0.slot)
+        self.assertFalse(t_new.done())
+        s.release(a1)                       # A is done: the slot is free at once
+        await settle()
+        self.assertTrue(t_new.done())
+        self.assertEqual(s.summary()["followups_kept"], 1)
+        self.assertEqual(s.summary()["live_evictions"], 0)
+
+    async def test_hold_lapses_after_hold_max_s(self):
+        clock = FakeClock()
+        s = LeaseScheduler(1, hold_max_s=2.0, clock=clock)
+        a0 = first("A")
+        await s.acquire(a0)
+        new = first("N", more_steps=0)
+        t_new = asyncio.create_task(s.acquire(new))
+        await settle()
+        s.release(a0)
+        clock.now = 2.5                     # A has not come back
+        a1 = followup("A")
+        t_a1 = asyncio.create_task(s.acquire(a1))
+        await settle()
+        self.assertTrue(t_new.done())       # arrival order: N takes the lapsed slot
+        self.assertFalse(t_a1.done())
+        s.release(new)
+        await settle()
+        self.assertTrue(t_a1.done())
+        self.assertEqual(s.summary()["followups_displaced"], 1)
+        self.assertEqual(s.summary()["live_evictions"], 1)
+        self.assertEqual(s.trace[0]["owner"], "A")
+
+    async def test_hold_lapses_without_another_event(self):
+        s = LeaseScheduler(1, hold_max_s=0.02)      # real clock: the timer must wake the queue
+        a0 = first("A")
+        await s.acquire(a0)
+        t_new = asyncio.create_task(s.acquire(first("N", more_steps=0)))
+        await settle()
+        s.release(a0)
+        await settle()
+        self.assertFalse(t_new.done())
+        await asyncio.sleep(0.1)
+        self.assertTrue(t_new.done())
+
+    async def test_long_usual_wait_gives_the_slot_up_at_once(self):
+        clock = FakeClock()
+        s = LeaseScheduler(1, hold_max_s=2.0, clock=clock)
+        a0 = first("A")
+        await s.acquire(a0)
+        s.release(a0)
+        clock.now = 5.0                     # A's tool took 5 s; nobody wanted the slot meanwhile
+        a1 = followup("A")
+        await asyncio.wait_for(s.acquire(a1), 1)
+        s.release(a1)
+        self.assertEqual(s.summary()["usual_wait_s"], {"agent/0": 5.0})
+        self.assertEqual(s.summary()["followups_kept"], 1)
+
+        b0 = first("B")
+        await s.acquire(b0)
+        t_new = asyncio.create_task(s.acquire(first("N", more_steps=0)))
+        await settle()
+        s.release(b0)                       # same kind of step: expect ~5 s, more than hold_max_s
+        await settle()
+        self.assertTrue(t_new.done())
+        self.assertEqual(s.summary()["given_up_at_once"], 1)
+
+    async def test_new_task_takes_finished_owner_with_longest_shared_prefix(self):
+        s = LeaseScheduler(3, hold_max_s=0)             # never hold: slots differ only by their owner
+        live = first("L", prompt="template-2 live")
+        done1 = first("D1", more_steps=0, prompt="template-1 x")
+        done2 = first("D2", more_steps=0, prompt="template-2 y")
+        for r in (live, done1, done2):
+            await s.acquire(r)
+        for r in (done2, done1, live):
+            s.release(r)
+
+        new = first("N", more_steps=0, prompt="template-2 z")
+        await s.acquire(new)
+        self.assertEqual(new.slot, done2.slot)          # finished owner, same template
+        other = first("M", more_steps=0, prompt="unrelated")
+        await s.acquire(other)
+        self.assertEqual(other.slot, done1.slot)        # finished owner before L's live history
+        self.assertEqual(s.summary()["live_evictions"], 0)
+        last = first("K", more_steps=0)
+        await s.acquire(last)
+        self.assertEqual(last.slot, live.slot)
+        self.assertEqual(s.summary()["live_evictions"], 1)
+
+    async def test_given_up_history_is_reused_if_nobody_took_the_slot(self):
+        s = LeaseScheduler(2, hold_max_s=0)
+        a0 = first("A")
+        await s.acquire(a0)
+        s.release(a0)
+        b0 = first("B", more_steps=0)
+        await s.acquire(b0)                 # takes the empty slot, not A's
+        a1 = followup("A")
+        await s.acquire(a1)
+        self.assertNotEqual(b0.slot, a0.slot)
+        self.assertEqual(a1.slot, a0.slot)
+        self.assertEqual(s.summary()["followups_kept"], 1)
+
+    async def test_failed_request_ends_the_lease(self):
+        clock = FakeClock()
+        s = LeaseScheduler(1, hold_max_s=2.0, clock=clock)
+        a0 = first("A")
+        await s.acquire(a0)
+        t_new = asyncio.create_task(s.acquire(first("N", more_steps=0)))
+        await settle()
+        s.observe(a0, Completion(status="error"))
+        s.release(a0)
+        await settle()
+        self.assertTrue(t_new.done())
+        self.assertEqual(s.summary()["holds"], 0)
+
+    async def test_counts_requests_served_by_another_slot(self):
+        s = LeaseScheduler(2)
+        r = first("A", more_steps=0)
+        await s.acquire(r)
+        s.observe(r, Completion(slot_id=r.slot))
+        s.observe(r, Completion(slot_id=r.slot + 1))
+        self.assertEqual(s.summary()["pin_mismatches"], 1)
+
+    def test_config_and_registry(self):
+        s = make_scheduler("lease", max_concurrency=4, hold_max_s=3.5)
+        self.assertIsInstance(s, LeaseScheduler)
+        self.assertEqual(s.config(), {"name": "lease", "max_concurrency": 4, "hold_max_s": 3.5})
+        for bad in (dict(max_concurrency=0), dict(max_concurrency=2, hold_max_s=-1),
+                    dict(max_concurrency=2, hold_max_s=float("inf"))):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                LeaseScheduler(**bad)
+
+
+class PinRecordingClient(FakeModelClient):
+    def __init__(self):
+        super().__init__()
+        self.pins = []
+
+    async def complete(self, messages, max_tokens, *, id_slot=None):
+        self.pins.append(id_slot)
+        return Completion(text="ok", slot_id=id_slot)
+
+
+class RunnerPinningTests(unittest.IsolatedAsyncioTestCase):
+    async def test_runner_pins_every_step_of_a_task_to_its_slot(self):
+        task = generate_test_tasks("one_agent_task")[0]
+        client = PinRecordingClient()
+        scheduler = LeaseScheduler(2)
+
+        async def no_sleep(_):
+            return None
+
+        result = await run_task(task, scheduler, client, sleep=no_sleep)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(client.pins, [0, 0])
+        self.assertEqual([r.task_prompt for r in result["requests"]], [task["steps"][0]["prompt"]] * 2)
+        self.assertEqual(scheduler.summary()["followups_kept"], 1)
+        self.assertEqual(scheduler.summary()["pin_mismatches"], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

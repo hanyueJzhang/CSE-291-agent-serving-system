@@ -1,0 +1,275 @@
+{
+  "_comment": "Where the lease scheduler should help less, W1 0.95X, four slots, no host cache, seeds 42-44, 9 runs, ~2.3 h. (1) lease_p4_hold0 on plain W1 (3 runs): slots are pinned and placed the same way but never held, which separates the hold from the placement; pair it with the fifo_c5 and lease_p4 runs of phase2_lease. (2) mooncake_w1_tool1p5x (6 runs): tool waits 0.75-3 s and 1.5 s, around the 2 s hold, so some holds lapse before the task returns and some slots are given up at once (check scheduler_summary). Tasks, prompts, arrivals and outputs are those of mooncake_w1. Compare (1) with: python -m analysis.paired results/phase2_lease results/phase2_lease_tools --baseline fifo_c5 --exclude 'w1tool*' 'w1_lease_p5_*' 'w1_fifo_c6_*'; (2) with: python -m analysis.paired results/phase2_lease_tools --baseline fifo_c5 --exclude 'w1_lease_p4_hold0_*'",
+  "name": "phase2_lease_tools",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_lease_tools"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_lease_p4_hold0_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4_hold0"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "0",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_p4_hold0_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4_hold0"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "0",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_p4_hold0_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4_hold0"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "0",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_fifo_c5_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_lease_p4_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_fifo_c5_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_lease_p4_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_fifo_c5_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1tool1p5x_lease_p4_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1_tool1p5x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool1p5x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}
