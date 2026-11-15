@@ -24,6 +24,11 @@ class Request:
     history_tokens: int = 0            # estimated tokens of that carried context
     remaining_llm_steps: int = 0       # LLM steps of the task after this one
     peak_context: int = 0              # estimated largest context of the whole task
+    task_prompt: str = ""              # first message of the context this step sends
+
+    # Set by a slot-aware policy at admission: the llama-server slot to pin the
+    # request to (id_slot). None lets the server choose.
+    slot: int | None = None
 
     # Set by the scheduler, in seconds on the scheduler's clock.
     t_arrive: float | None = None

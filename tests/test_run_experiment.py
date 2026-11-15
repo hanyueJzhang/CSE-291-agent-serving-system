@@ -149,6 +149,25 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
             await run_experiment(self.args("--run-id", "bad3", "--scheduler", "adaptive",
                                            "--no-continuation-first"))
 
+    async def test_lease_scheduler_pins_requests_to_slots(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "lease", "--scheduler", "lease", "--concurrency", "2",
+            "--hold-max-s", "0.5", "--warmup", "0",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        self.assertEqual(config["scheduler"], {"name": "lease", "max_concurrency": 2, "hold_max_s": 0.5})
+        self.assertIn("followups_kept", config["scheduler_summary"])
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
+        self.assertTrue(self.fake.bodies)
+        self.assertTrue(all(body.get("id_slot") in (0, 1) for body in self.fake.bodies))
+
+    async def test_lease_flags_and_slot_count_are_checked(self):
+        with self.assertRaises(ValueError):         # more leases than the fake server's two slots
+            await run_experiment(self.args("--run-id", "bad4", "--scheduler", "lease", "--concurrency", "3"))
+        self.assertFalse((Path(self.tmp.name) / "bad4").exists())
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad5", "--hold-max-s", "2"))
+
     async def test_agent_flags_need_agent_scheduler(self):
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad", "--aging-s", "5"))
