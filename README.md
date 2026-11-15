@@ -90,12 +90,15 @@ hidden server queue builds up, so it settles near "all slots busy + one
 waiting" on any slot count. With `--overload-wait-s S`, ready follow-up steps
 go first while some first step has waited S seconds. With `--aging-s A`, the
 order outside overload is continuation-first with A-second aging (as in
-`--scheduler agent`). The limit over time is in
+`--scheduler agent`). With `--adapt-startup-trim`, until the limit first holds
+a request back it is lowered to one above the peak number in flight, so a
+too-high starting limit does not survive to the first burst. The limit over time is in
 `run_config.json` (`scheduler_summary`, `scheduler_trace`).
 
 ```bash
 python -m scripts.sweep scripts/sweeps/phase2_adaptive.json      # 13 runs, ~3.5 h; compare commands in its _comment
 python -m scripts.sweep scripts/sweeps/phase2_adaptive_cf.json   # adaptive + continuation-first, 3 runs, ~45 min
+python -m scripts.sweep scripts/sweeps/phase2_adaptive_trim.json # startup trim, start c5 and c10, 6 runs, ~1.5 h
 ```
 
 ## Keeping environments consistent

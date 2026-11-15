@@ -79,6 +79,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="adaptive: target average number of requests waiting inside llama-server (default 0.75)")
     p.add_argument("--adapt-window", type=int, default=None,
                    help="adaptive: completions per feedback window (default 16)")
+    p.add_argument("--adapt-startup-trim", action="store_true",
+                   help="adaptive: until the limit first holds work back, lower it to 1 + peak in-flight requests")
     p.add_argument("--overload-wait-s", type=float, default=None,
                    help="adaptive: follow-ups go first while a first step has waited this long (default: off)")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
@@ -137,8 +139,10 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
                 "overload_wait_s": args.overload_wait_s}
     if args.scheduler == "adaptive":
         params.update({k: v for k, v in adaptive.items() if v is not None})
-    elif any(v is not None for v in adaptive.values()):
-        raise ValueError("--target-server-queue / --adapt-window / --overload-wait-s only apply to --scheduler adaptive")
+        if args.adapt_startup_trim:
+            params["startup_trim"] = True
+    elif any(v is not None for v in adaptive.values()) or args.adapt_startup_trim:
+        raise ValueError("--target-server-queue / --adapt-window / --adapt-startup-trim / --overload-wait-s only apply to --scheduler adaptive")
     return params
 
 
