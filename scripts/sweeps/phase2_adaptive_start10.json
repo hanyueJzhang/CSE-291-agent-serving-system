@@ -1,0 +1,71 @@
+{
+  "_comment": "Completes the start-at-c10 robustness check of the adaptive scheduler (phase2_adaptive ran only seed 42): same settings, seeds 43 and 44, two runs, ~30 min. Results go to their own folder so phase2_adaptive stays as it was. Compare with: python -m analysis.paired results/phase2_p5_cram results/phase2_p5_grid results/phase2_adaptive results/phase2_adaptive_start10 --label-key concurrency cache_ram_mb load_pct_x --baseline 6_p5/4096/95 --ignore experiment phase policy",
+  "name": "phase2_adaptive_start10",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_adaptive_start10"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_adapt_p5_cram4g_start10_l95_s43",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "ad_p5_start10",
+        "policy": "adaptive_p5_start10"
+      },
+      "args": [
+        "--scheduler",
+        "adaptive",
+        "--overload-wait-s",
+        "20",
+        "--concurrency",
+        "10",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_adapt_p5_cram4g_start10_l95_s44",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "ad_p5_start10",
+        "policy": "adaptive_p5_start10"
+      },
+      "args": [
+        "--scheduler",
+        "adaptive",
+        "--overload-wait-s",
+        "20",
+        "--concurrency",
+        "10",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}
