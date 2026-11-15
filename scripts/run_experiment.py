@@ -68,7 +68,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--no-continuation-first", action="store_true",
                    help="agent scheduler: don't put ready follow-up steps ahead of first steps (= FIFO order)")
     p.add_argument("--aging-s", type=float, default=None,
-                   help="agent scheduler: a first step that waited this long ranks with follow-ups (default: no aging)")
+                   help="agent scheduler: a first step that waited this long ranks with follow-ups (default: no aging); "
+                        "adaptive scheduler: turns on continuation-first ordering with this aging (default: off)")
     p.add_argument("--no-admission-check", action="store_true",
                    help="run tasks whose estimated peak context exceeds the slot (Phase 1 behaviour: "
                         "silent truncation or HTTP 400); by default they are rejected up front")
@@ -127,8 +128,11 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
     params: dict[str, Any] = {"max_concurrency": args.concurrency}
     if args.scheduler == "agent":
         params.update(continuation_first=not args.no_continuation_first, aging_s=args.aging_s)
+    elif args.scheduler == "adaptive" and args.aging_s is not None and not args.no_continuation_first:
+        params["cf_aging_s"] = args.aging_s
     elif args.no_continuation_first or args.aging_s is not None:
-        raise ValueError("--no-continuation-first / --aging-s only apply to --scheduler agent")
+        raise ValueError("--no-continuation-first only applies to --scheduler agent, "
+                         "--aging-s to --scheduler agent or adaptive")
     adaptive = {"target_server_queue": args.target_server_queue, "window": args.adapt_window,
                 "overload_wait_s": args.overload_wait_s}
     if args.scheduler == "adaptive":
