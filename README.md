@@ -88,11 +88,14 @@ inside llama-server (Little's law on first token - prefill - dispatch), raises
 the limit while slots go idle and work is held back, and lowers it when a
 hidden server queue builds up, so it settles near "all slots busy + one
 waiting" on any slot count. With `--overload-wait-s S`, ready follow-up steps
-go first while some first step has waited S seconds. The limit over time is in
+go first while some first step has waited S seconds. With `--aging-s A`, the
+order outside overload is continuation-first with A-second aging (as in
+`--scheduler agent`). The limit over time is in
 `run_config.json` (`scheduler_summary`, `scheduler_trace`).
 
 ```bash
-python -m scripts.sweep scripts/sweeps/phase2_adaptive.json   # 13 runs, ~3.5 h; compare commands in its _comment
+python -m scripts.sweep scripts/sweeps/phase2_adaptive.json      # 13 runs, ~3.5 h; compare commands in its _comment
+python -m scripts.sweep scripts/sweeps/phase2_adaptive_cf.json   # adaptive + continuation-first, 3 runs, ~45 min
 ```
 
 ## Keeping environments consistent

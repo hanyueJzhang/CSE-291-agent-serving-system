@@ -41,6 +41,14 @@ already in progress finish instead of all tasks slowing down together. It
 switches back to FIFO once no first step has waited overload_wait_s / 2. At
 0.95X load this rarely triggers, which avoids the new-task starvation that
 always-on continuation-first showed in Phase 2.
+
+Continuation-first (cf_aging_s): optional, off by default. With it the
+ordering outside overload mode is the agent scheduler's continuation-first
+with aging (scheduler/agent.py): ready follow-ups go ahead of first steps, and
+a first step that has waited cf_aging_s joins them. Only the order changes;
+the limit is still tuned as above. On the 5-slot + host cache main line,
+continuation-first with 15 s aging and the adaptive limit each gave about
+-10% task P95 on their own; this option tests whether they add up.
 """
 from __future__ import annotations
 
@@ -64,6 +72,7 @@ class AdaptiveScheduler(Scheduler):
         band: float = 0.5,
         window: int = 16,
         overload_wait_s: float | None = None,
+        cf_aging_s: float | None = None,
         **kwargs,
     ):
         if max_concurrency < 1 or min_concurrency < 1:
@@ -74,6 +83,8 @@ class AdaptiveScheduler(Scheduler):
             raise ValueError("need band > 0 and target_server_queue >= band")
         if overload_wait_s is not None and overload_wait_s <= 0:
             raise ValueError("overload_wait_s must be > 0 or None")
+        if cf_aging_s is not None and cf_aging_s < 0:
+            raise ValueError("cf_aging_s must be >= 0 or None")
         super().__init__(**kwargs)
         self.initial_limit = max_concurrency
         self.limit = max_concurrency
@@ -83,6 +94,7 @@ class AdaptiveScheduler(Scheduler):
         self.band = band
         self.window = window
         self.overload_wait_s = overload_wait_s
+        self.cf_aging_s = cf_aging_s
 
         self._obs: deque[tuple[float, float, float | None]] = deque(maxlen=window)  # (t_dispatch, wait, tpot)
         self._since_eval = 0
@@ -112,6 +124,9 @@ class AdaptiveScheduler(Scheduler):
             return None
         if self.overload:
             return min(waiting, key=lambda r: 0 if r.is_followup else 1)   # stable: arrival order within class
+        if self.cf_aging_s is not None:
+            aged = lambda r: r.t_arrive is not None and now - r.t_arrive >= self.cf_aging_s
+            return min(waiting, key=lambda r: 0 if r.is_followup or aged(r) else 1)
         return waiting[0]
 
     # ---- feedback -----------------------------------------------------------
@@ -170,6 +185,7 @@ class AdaptiveScheduler(Scheduler):
             "band": self.band,
             "window": self.window,
             "overload_wait_s": self.overload_wait_s,
+            "cf_aging_s": self.cf_aging_s,
         }
 
     def summary(self) -> dict:

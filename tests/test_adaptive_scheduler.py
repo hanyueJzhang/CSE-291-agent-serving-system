@@ -106,11 +106,39 @@ class ControlLawTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(s.overload)
         self.assertTrue(t_later.done())
 
+    async def test_cf_aging_orders_followups_first_until_first_step_ages(self):
+        clock = FakeClock()
+        s = AdaptiveScheduler(1, cf_aging_s=5.0, clock=clock)
+        blocker = req("blk")
+        await s.acquire(blocker)
+        new, fu = req("n"), req("a", followup=True, step_idx=1)
+        t_new = asyncio.create_task(s.acquire(new))
+        await settle()
+        t_fu = asyncio.create_task(s.acquire(fu))
+        await settle()
+        clock.now = 1.0
+        s.release(blocker)
+        await settle()
+        self.assertTrue(t_fu.done())            # follow-up overtakes the earlier first step
+        self.assertFalse(t_new.done())
+        fu2 = req("b", followup=True, step_idx=1)
+        t_fu2 = asyncio.create_task(s.acquire(fu2))
+        await settle()
+        clock.now = 6.0                         # first step has now waited 6 s >= aging
+        s.release(fu)
+        await settle()
+        self.assertTrue(t_new.done())           # aged: back in arrival order, ahead of fu2
+        self.assertFalse(t_fu2.done())
+        self.assertFalse(s.overload)
+        self.assertEqual(s.config()["cf_aging_s"], 5.0)
+
     def test_bad_params(self):
         with self.assertRaises(ValueError):
             AdaptiveScheduler(0)
         with self.assertRaises(ValueError):
             AdaptiveScheduler(2, target_server_queue=0.2, band=0.5)
+        with self.assertRaises(ValueError):
+            AdaptiveScheduler(2, cf_aging_s=-1)
         self.assertEqual(make_scheduler("adaptive", max_concurrency=3).limit, 3)
 
 

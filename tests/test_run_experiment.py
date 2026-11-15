@@ -135,6 +135,16 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad2", "--overload-wait-s", "5"))
 
+    async def test_adaptive_scheduler_with_continuation_first(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "adapt_cf", "--scheduler", "adaptive", "--aging-s", "15", "--warmup", "0",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        self.assertEqual(config["scheduler"]["cf_aging_s"], 15.0)
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad3", "--scheduler", "adaptive",
+                                           "--no-continuation-first"))
+
     async def test_agent_flags_need_agent_scheduler(self):
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad", "--aging-s", "5"))
