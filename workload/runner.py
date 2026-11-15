@@ -88,12 +88,16 @@ async def run_task(
             history_tokens=step_contexts[step_idx] if carries else 0,
             remaining_llm_steps=sum(i > step_idx for i in llm_indices),
             peak_context=peak,
+            task_prompt=context[0]["content"],
         )
 
         async with scheduler.admit(request):
+            # Only a slot-aware policy sets request.slot; other clients never see id_slot.
+            pin = {} if request.slot is None else {"id_slot": request.slot}
             completion = await model_client.complete(
                 messages=list(context),
                 max_tokens=step["max_output_tokens"],
+                **pin,
             )
             observe = getattr(scheduler, "observe", None)
             if observe is not None:

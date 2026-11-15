@@ -81,6 +81,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="adaptive: completions per feedback window (default 16)")
     p.add_argument("--overload-wait-s", type=float, default=None,
                    help="adaptive: follow-ups go first while a first step has waited this long (default: off)")
+    # Lease scheduler (--scheduler lease): --concurrency is the number of llama-server slots to lease
+    p.add_argument("--hold-max-s", type=float, default=None,
+                   help="lease: longest a slot is kept idle for its task's tool wait (default 2; 0 = never hold)")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
     # Workload overrides, so sweeps don't need one JSON file per point.
@@ -139,6 +142,11 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
         params.update({k: v for k, v in adaptive.items() if v is not None})
     elif any(v is not None for v in adaptive.values()):
         raise ValueError("--target-server-queue / --adapt-window / --overload-wait-s only apply to --scheduler adaptive")
+    if args.scheduler == "lease":
+        if args.hold_max_s is not None:
+            params["hold_max_s"] = args.hold_max_s
+    elif args.hold_max_s is not None:
+        raise ValueError("--hold-max-s only applies to --scheduler lease")
     return params
 
 
@@ -272,6 +280,9 @@ async def run_experiment(args: argparse.Namespace) -> Path:
                 pass
 
         total_slots = server.get("total_slots")
+        if args.scheduler == "lease" and total_slots and args.concurrency > total_slots:
+            raise ValueError(f"--scheduler lease pins one task per slot: --concurrency {args.concurrency} "
+                             f"exceeds the {total_slots} llama-server slots")
         if total_slots and args.concurrency > total_slots:
             warn(f"concurrency {args.concurrency} > llama-server slots {total_slots}: "
                  "extra requests queue inside llama-server, where our queue_s does not see them")

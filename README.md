@@ -98,6 +98,39 @@ python -m scripts.sweep scripts/sweeps/phase2_adaptive.json      # 13 runs, ~3.5
 python -m scripts.sweep scripts/sweeps/phase2_adaptive_cf.json   # adaptive + continuation-first, 3 runs, ~45 min
 ```
 
+## Phase 2 lease scheduler
+
+`--scheduler lease` (`scheduler/lease.py`) admits whole tasks instead of single
+requests: a task leases one llama-server slot from its first step to its last,
+and every request is pinned to its slot with `id_slot`. `--concurrency` is the
+number of slots to lease (at most the server's). While a task waits for a tool,
+its slot is held for up to `--hold-max-s` seconds (default 2) if waits after
+that kind of step are usually that short, so the follow-up finds its history in
+place and prefills only the appended tokens; with longer tool waits the slot is
+given up at once and the policy is FIFO with client-side slot choice. New tasks
+are admitted in arrival order to slots whose task has finished.
+
+The 2 s default comes from `analysis.prefill_stall`, which measures how much one
+slot's prefill slows the other slots' decoding and how much an idle slot costs:
+
+```bash
+python -m analysis.prefill_stall results/phase2_diag/w1_fifo_c5_l95 results/phase2_stress/w1_fifo_c5_l115_s4*
+```
+
+`run_config.json` records the counts (`scheduler_summary`: holds, follow-ups
+that found their history, live histories overwritten, `pin_mismatches` if
+llama-server served a request from another slot) and each overwritten history
+(`scheduler_trace`).
+
+```bash
+python -m scripts.sweep scripts/sweeps/phase2_lease_quick.json   # FIFO c = 5 vs lease, seed 42, 2 runs, ~30 min
+python -m scripts.sweep scripts/sweeps/phase2_lease.json         # vs FIFO c = 5 and the 5-slot + host-cache main line, 12 runs, ~3 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_loads.json   # 1.15X, 0.75X and the synthetic mix, 18 runs, ~4 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_tools.json   # no-hold ablation and 1.5x tool waits, 9 runs, ~2.3 h
+```
+
+Compare commands are in each plan's `_comment`.
+
 ## Keeping environments consistent
 
 Only the machine that produces reported numbers must match exactly; dev machines just need to run the code.
