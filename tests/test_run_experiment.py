@@ -138,9 +138,13 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
     async def test_adaptive_scheduler_with_continuation_first(self):
         out_dir = await run_experiment(self.args(
             "--run-id", "adapt_cf", "--scheduler", "adaptive", "--aging-s", "15", "--warmup", "0",
+            "--adapt-startup-trim",
         ))
         config = json.loads((out_dir / "run_config.json").read_text())
         self.assertEqual(config["scheduler"]["cf_aging_s"], 15.0)
+        self.assertTrue(config["scheduler"]["startup_trim"])
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad4", "--adapt-startup-trim"))
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad3", "--scheduler", "adaptive",
                                            "--no-continuation-first"))

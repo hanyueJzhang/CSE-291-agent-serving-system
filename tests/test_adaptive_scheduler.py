@@ -156,6 +156,52 @@ class ConvergenceTests(unittest.IsolatedAsyncioTestCase):
         await drive(s, SlotServer(slots=3, service_s=0.02), n_requests=300)
         self.assertIn(s.limit, (4, 5))
 
+    async def test_converges_with_startup_trim(self):
+        for start in (1, 10):
+            s = AdaptiveScheduler(start, window=8, startup_trim=True)
+            await drive(s, SlotServer(slots=3, service_s=0.02), n_requests=300)
+            self.assertIn(s.limit, (4, 5))
+
+
+class StartupTrimTests(unittest.IsolatedAsyncioTestCase):
+    async def _light_load(self, s):
+        # one request in flight at a time: the limit never binds
+        await drive(s, SlotServer(slots=3, service_s=0.002), n_requests=40, arrive_every_s=0.01)
+
+    async def test_trims_unused_limit_under_light_load(self):
+        s = AdaptiveScheduler(10, window=8, startup_trim=True)
+        await self._light_load(s)
+        self.assertLessEqual(s.limit, 3)
+        self.assertEqual(s.config()["startup_trim"], True)
+
+    async def test_without_trim_unused_limit_stays(self):
+        s = AdaptiveScheduler(10, window=8)
+        await self._light_load(s)
+        self.assertEqual(s.limit, 10)
+
+    async def test_no_trim_once_the_limit_has_bound(self):
+        clock = FakeClock()
+        s = AdaptiveScheduler(2, window=4, startup_trim=True, clock=clock)
+        a, b, c = req("a"), req("b"), req("c")
+        await s.acquire(a)
+        await s.acquire(b)
+        t_c = asyncio.create_task(s.acquire(c))   # held back: the limit has bound
+        await settle()
+        self.assertTrue(s._limit_has_bound)
+        for r in (a, b):
+            clock.now += 1.0
+            s.observe(r, done(first=r.t_dispatch + 0.0))
+            s.release(r)
+        await settle()
+        for i in range(4):                       # light load afterwards, one at a time
+            r = req(f"x{i}")
+            await s.acquire(r)
+            clock.now += 1.0
+            s.observe(r, done(first=r.t_dispatch + 0.4))
+            s.release(r)
+        self.assertGreaterEqual(s.limit, 2)
+        t_c.cancel()
+
 
 if __name__ == "__main__":
     unittest.main()

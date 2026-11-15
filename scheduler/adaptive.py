@@ -48,7 +48,19 @@ with aging (scheduler/agent.py): ready follow-ups go ahead of first steps, and
 a first step that has waited cf_aging_s joins them. Only the order changes;
 the limit is still tuned as above. On the 5-slot + host cache main line,
 continuation-first with 15 s aging and the adaptive limit each gave about
--10% task P95 on their own; this option tests whether they add up.
+-10% task P95 on their own; together they were worse than either.
+
+Startup trim (startup_trim): optional, off by default. A starting limit that
+is too high costs nothing while load is light, because it never binds, and the
+control law above cannot lower it then (Q stays near 0). When the first burst
+arrives the whole excess is admitted at once and a server queue builds; the
+law then needs one full window per step to come down (from c = 10 on five
+slots: first step at 145 s, at 6 about 60 s later), and that run matched the
+hand-tuned limit instead of beating it by 9%. With startup_trim, until the
+limit first holds a request back, each evaluation also lowers the limit to
+one above the peak number of requests in flight since the previous
+evaluation (like TCP congestion-window validation: an unused window is not
+kept). After that the scheduler behaves exactly as without the option.
 """
 from __future__ import annotations
 
@@ -73,6 +85,7 @@ class AdaptiveScheduler(Scheduler):
         window: int = 16,
         overload_wait_s: float | None = None,
         cf_aging_s: float | None = None,
+        startup_trim: bool = False,
         **kwargs,
     ):
         if max_concurrency < 1 or min_concurrency < 1:
@@ -95,10 +108,14 @@ class AdaptiveScheduler(Scheduler):
         self.window = window
         self.overload_wait_s = overload_wait_s
         self.cf_aging_s = cf_aging_s
+        self.startup_trim = startup_trim
+        self._limit_has_bound = False     # the limit held a request back at least once
+        self._peak_running = 0            # max requests in flight since the last evaluation
 
         self._obs: deque[tuple[float, float, float | None]] = deque(maxlen=window)  # (t_dispatch, wait, tpot)
         self._since_eval = 0
         self._held_back = False
+        self._peak_running = self.num_running
         self.overload = False
         self.trace: list[dict[str, Any]] = []        # one row per evaluation or mode switch
 
@@ -121,7 +138,9 @@ class AdaptiveScheduler(Scheduler):
         self._update_overload(waiting, now)
         if len(running) >= self.limit:
             self._held_back = True
+            self._limit_has_bound = True
             return None
+        self._peak_running = max(self._peak_running, len(running) + 1)
         if self.overload:
             return min(waiting, key=lambda r: 0 if r.is_followup else 1)   # stable: arrival order within class
         if self.cf_aging_s is not None:
@@ -162,6 +181,8 @@ class AdaptiveScheduler(Scheduler):
             self.limit -= 1
         elif q < self.target - self.band and self._held_back and self.limit < self.max_limit:
             self.limit += 1
+        elif self.startup_trim and not self._limit_has_bound:
+            self.limit = max(min(self.limit, self._peak_running + 1), self.min_limit)
         tpots = [t for _, _, t in self._obs if t is not None]
         self.trace.append({
             "t": self._clock(), "event": "eval", "limit": self.limit, "prev_limit": old,
@@ -170,6 +191,7 @@ class AdaptiveScheduler(Scheduler):
         })
         self._since_eval = 0
         self._held_back = False
+        self._peak_running = self.num_running
         if self.limit != old:
             self._obs.clear()            # judge the new limit on its own completions only
         if self.limit > old:
@@ -186,6 +208,7 @@ class AdaptiveScheduler(Scheduler):
             "window": self.window,
             "overload_wait_s": self.overload_wait_s,
             "cf_aging_s": self.cf_aging_s,
+            "startup_trim": self.startup_trim,
         }
 
     def summary(self) -> dict:
