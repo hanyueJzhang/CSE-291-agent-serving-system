@@ -1,0 +1,69 @@
+{
+  "_comment": "First look at the lease scheduler (scheduler/lease.py: one slot per task, held over tool waits of up to 2 s): W1 0.95X seed 42, four 6,144-token slots, no host cache, FIFO c = 5 then lease back to back. Two runs, ~30 min. One seed shows the direction only; phase2_lease is the paired comparison. Before reading latencies, check the lease run's run_config.json: scheduler_summary.pin_mismatches should be 0 (llama-server honoured id_slot) and followups_kept should be close to the number of follow-ups. Compare with: python -m analysis.paired results/phase2_lease_quick --baseline fifo_c5",
+  "name": "phase2_lease_quick",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_lease_quick"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c5_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "5",
+        "policy": "fifo_c5"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "5",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_p4_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 4,
+        "CACHE_RAM": 0
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_p4",
+        "policy": "lease_p4"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "4",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    }
+  ]
+}
