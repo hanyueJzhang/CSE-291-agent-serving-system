@@ -86,6 +86,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     # Lease scheduler (--scheduler lease): --concurrency is the number of llama-server slots to lease
     p.add_argument("--hold-max-s", type=float, default=None,
                    help="lease: longest a slot is kept idle for its task's tool wait (default 2; 0 = never hold)")
+    p.add_argument("--lease-soft-limit", type=int, default=None,
+                   help="lease: admit new tasks only while fewer slots than this are busy or held, "
+                        "unless the oldest has waited --lease-overflow-s (default: off)")
+    p.add_argument("--lease-overflow-s", type=float, default=None,
+                   help="lease: wait after which a new task may pass the soft limit (default 2)")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
     # Workload overrides, so sweeps don't need one JSON file per point.
@@ -146,11 +151,12 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
             params["startup_trim"] = True
     elif any(v is not None for v in adaptive.values()) or args.adapt_startup_trim:
         raise ValueError("--target-server-queue / --adapt-window / --adapt-startup-trim / --overload-wait-s only apply to --scheduler adaptive")
+    lease = {"hold_max_s": args.hold_max_s, "soft_limit": args.lease_soft_limit,
+             "overflow_wait_s": args.lease_overflow_s}
     if args.scheduler == "lease":
-        if args.hold_max_s is not None:
-            params["hold_max_s"] = args.hold_max_s
-    elif args.hold_max_s is not None:
-        raise ValueError("--hold-max-s only applies to --scheduler lease")
+        params.update({k: v for k, v in lease.items() if v is not None})
+    elif any(v is not None for v in lease.values()):
+        raise ValueError("--hold-max-s / --lease-soft-limit / --lease-overflow-s only apply to --scheduler lease")
     return params
 
 

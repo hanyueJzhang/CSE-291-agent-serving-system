@@ -164,10 +164,71 @@ class LeaseSchedulerTests(unittest.IsolatedAsyncioTestCase):
         s.observe(r, Completion(slot_id=r.slot + 1))
         self.assertEqual(s.summary()["pin_mismatches"], 1)
 
+    async def test_soft_limit_holds_new_task_back_until_overflow_wait(self):
+        clock = FakeClock()
+        s = LeaseScheduler(3, soft_limit=2, overflow_wait_s=2.0, clock=clock)
+        a, b = first("A"), first("B")
+        await s.acquire(a)
+        await s.acquire(b)
+        c = first("C")
+        t_c = asyncio.create_task(s.acquire(c))
+        await settle()
+        self.assertFalse(t_c.done())                # a third slot is free, but two are leased
+        clock.now = 2.0                             # C has waited overflow_wait_s
+        d = first("D")
+        t_d = asyncio.create_task(s.acquire(d))     # any event re-checks the head
+        await settle()
+        self.assertTrue(t_c.done())
+        self.assertFalse(t_d.done())                # no free slot left
+        self.assertEqual(s.summary()["soft_held_back"], 1)
+        self.assertEqual(s.summary()["overflow_admits"], 1)
+
+    async def test_soft_limit_admits_when_a_lease_ends(self):
+        clock = FakeClock()
+        s = LeaseScheduler(3, soft_limit=2, overflow_wait_s=5.0, clock=clock)
+        a, b = first("A", more_steps=0), first("B")
+        await s.acquire(a)
+        await s.acquire(b)
+        c = first("C")
+        t_c = asyncio.create_task(s.acquire(c))
+        await settle()
+        self.assertFalse(t_c.done())
+        s.release(a)                                # A is done: one lease left
+        await settle()
+        self.assertTrue(t_c.done())
+        self.assertEqual(s.summary()["overflow_admits"], 0)
+
+    async def test_soft_limit_never_holds_back_followups(self):
+        clock = FakeClock()
+        s = LeaseScheduler(2, soft_limit=1, hold_max_s=0.0, clock=clock)
+        a0 = first("A")
+        await s.acquire(a0)
+        b1 = followup("B")                          # its slot was lost: it needs any free slot
+        await asyncio.wait_for(s.acquire(b1), 1)
+        self.assertEqual(b1.slot, 1)
+
+    async def test_overflow_timer_wakes_the_queue(self):
+        s = LeaseScheduler(2, soft_limit=1, overflow_wait_s=0.02)     # real clock
+        await s.acquire(first("A"))
+        t_b = asyncio.create_task(s.acquire(first("B")))
+        await settle()
+        self.assertFalse(t_b.done())
+        await asyncio.sleep(0.1)
+        self.assertTrue(t_b.done())
+
+    def test_soft_limit_params_are_checked(self):
+        with self.assertRaises(ValueError):
+            LeaseScheduler(2, soft_limit=3)
+        with self.assertRaises(ValueError):
+            LeaseScheduler(2, soft_limit=0)
+        with self.assertRaises(ValueError):
+            LeaseScheduler(2, soft_limit=1, overflow_wait_s=-1)
+
     def test_config_and_registry(self):
         s = make_scheduler("lease", max_concurrency=4, hold_max_s=3.5)
         self.assertIsInstance(s, LeaseScheduler)
-        self.assertEqual(s.config(), {"name": "lease", "max_concurrency": 4, "hold_max_s": 3.5})
+        self.assertEqual(s.config(), {"name": "lease", "max_concurrency": 4, "hold_max_s": 3.5,
+                                      "soft_limit": None, "overflow_wait_s": 2.0})
         for bad in (dict(max_concurrency=0), dict(max_concurrency=2, hold_max_s=-1),
                     dict(max_concurrency=2, hold_max_s=float("inf"))):
             with self.subTest(bad), self.assertRaises(ValueError):
