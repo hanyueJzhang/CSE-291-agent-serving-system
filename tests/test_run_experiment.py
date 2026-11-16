@@ -156,11 +156,22 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
         ))
         config = json.loads((out_dir / "run_config.json").read_text())
         self.assertEqual(config["scheduler"], {"name": "lease", "max_concurrency": 2, "hold_max_s": 0.5,
-                                               "soft_limit": 1, "overflow_wait_s": 0.1})
+                                               "soft_limit": 1, "overflow_wait_s": 0.1,
+                                               "decode_limit": None, "kv_budget_tokens": None})
         self.assertIn("followups_kept", config["scheduler_summary"])
         self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
         self.assertTrue(self.fake.bodies)
         self.assertTrue(all(body.get("id_slot") in (0, 1) for body in self.fake.bodies))
+
+    async def test_lease_decode_limit_and_kv_budget_flags(self):
+        out_dir = await run_experiment(self.args(
+            "--run-id", "lease_dl", "--scheduler", "lease", "--concurrency", "2",
+            "--lease-decode-limit", "1", "--lease-kv-budget", "100000", "--warmup", "0",
+        ))
+        config = json.loads((out_dir / "run_config.json").read_text())
+        self.assertEqual(config["scheduler"]["decode_limit"], 1)
+        self.assertEqual(config["scheduler"]["kv_budget_tokens"], 100000)
+        self.assertTrue(all(t["status"] == "ok" for t in read_csv(out_dir / "tasks.csv")))
 
     async def test_lease_flags_and_slot_count_are_checked(self):
         with self.assertRaises(ValueError):         # more leases than the fake server's two slots
@@ -170,6 +181,10 @@ class RunExperimentTests(unittest.IsolatedAsyncioTestCase):
             await run_experiment(self.args("--run-id", "bad5", "--hold-max-s", "2"))
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad6", "--lease-soft-limit", "1"))
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad8", "--lease-decode-limit", "1"))
+        with self.assertRaises(ValueError):
+            await run_experiment(self.args("--run-id", "bad9", "--lease-kv-budget", "1000"))
         with self.assertRaises(ValueError):
             await run_experiment(self.args("--run-id", "bad7", "--scheduler", "lease",
                                            "--lease-soft-limit", "3"))

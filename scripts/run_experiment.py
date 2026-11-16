@@ -91,6 +91,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         "unless the oldest has waited --lease-overflow-s (default: off)")
     p.add_argument("--lease-overflow-s", type=float, default=None,
                    help="lease: wait after which a new task may pass the soft limit (default 2)")
+    p.add_argument("--lease-decode-limit", type=int, default=None,
+                   help="lease: admit new tasks only while fewer slots than this are busy; held slots "
+                        "do not count (default: off)")
+    p.add_argument("--lease-kv-budget", type=int, default=None,
+                   help="lease: admit a new task only while the live tasks' estimated peak contexts plus "
+                        "its own fit this many tokens, e.g. the shared KV pool size (default: off)")
     p.add_argument("--run-id", help="default: <workload>_<scheduler>_c<N>_<timestamp>")
     p.add_argument("--results-dir", default=str(REPO_ROOT / "results"))
     # Workload overrides, so sweeps don't need one JSON file per point.
@@ -152,11 +158,12 @@ def scheduler_params(args: argparse.Namespace) -> dict[str, Any]:
     elif any(v is not None for v in adaptive.values()) or args.adapt_startup_trim:
         raise ValueError("--target-server-queue / --adapt-window / --adapt-startup-trim / --overload-wait-s only apply to --scheduler adaptive")
     lease = {"hold_max_s": args.hold_max_s, "soft_limit": args.lease_soft_limit,
-             "overflow_wait_s": args.lease_overflow_s}
+             "overflow_wait_s": args.lease_overflow_s, "decode_limit": args.lease_decode_limit,
+             "kv_budget_tokens": args.lease_kv_budget}
     if args.scheduler == "lease":
         params.update({k: v for k, v in lease.items() if v is not None})
     elif any(v is not None for v in lease.values()):
-        raise ValueError("--hold-max-s / --lease-soft-limit / --lease-overflow-s only apply to --scheduler lease")
+        raise ValueError("--hold-max-s / --lease-* flags only apply to --scheduler lease")
     return params
 
 

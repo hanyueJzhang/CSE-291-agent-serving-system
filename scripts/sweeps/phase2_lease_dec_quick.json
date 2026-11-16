@@ -1,0 +1,143 @@
+{
+  "_comment": "Quick check of a decode limit for leases on the 8-slot shared KV pool. Leasing 6 slots (lease_kvu8_c6, the best config so far) gave new-task TTFT P95 about +50% vs the main line, partly because new tasks wait for slots held over tool waits (~565 holds of ~1.2 s per run, about one slot idle on average). lease_kvu8_dec6 has 8 slots but admits new tasks only while fewer than 6 are busy decoding (held slots do not count), so the decode batch stays near 6, and only while the live tasks' estimated peak contexts fit the 24,576-token pool (leasing 8 at 1.15X filled it and 16 tasks failed). Seed 42 only, at 0.95X and 1.15X, each pair back to back. 4 runs, ~1.2 h. A screen, not a result: run the 3-seed sweep only if dec6 looks promising. Compare with: python -m analysis.paired results/phase2_lease_dec_quick --baseline lease_kvu8_c6 (pairs each load separately).",
+  "name": "phase2_lease_dec_quick",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_lease_dec_quick"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_lease_kvu8_c6_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_c6",
+        "policy": "lease_kvu8_c6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "6",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_c6_l115_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_c6",
+        "policy": "lease_kvu8_c6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "6",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l115_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    }
+  ]
+}
