@@ -131,6 +131,8 @@ python -m scripts.sweep scripts/sweeps/phase2_lease.json         # vs FIFO c = 5
 python -m scripts.sweep scripts/sweeps/phase2_lease_loads.json   # 1.15X, 0.75X and the synthetic mix, 18 runs, ~4 h
 python -m scripts.sweep scripts/sweeps/phase2_lease_tools.json   # no-hold ablation and 1.5x tool waits, 9 runs, ~2.3 h
 python -m scripts.sweep scripts/sweeps/phase2_lease_kvu.json     # leases on an 8-slot shared KV pool vs the main line, 12 runs, ~3 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_soft.json    # 8-slot pool, lease up to 8 but new tasks past 6 only after a 2 s wait, 12 runs, ~3 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_stress.json  # the lease configs at 1.15X overload, 12 runs, ~3.5 h
 ```
 
 Compare commands are in each plan's `_comment`.

@@ -42,6 +42,14 @@ hold_max_s is the break-even idle time above (default 2 s; W1 tool waits are
 longer tool waits no slot is held and the policy is FIFO with client-side
 slot choice; hold_max_s = 0 gives that always.
 
+Soft limit (optional, soft_limit < max_concurrency): new tasks are admitted
+only while fewer than soft_limit slots are busy or held, unless the oldest new
+task has already waited overflow_wait_s; then it may take any free slot. On
+an 8-slot shared KV pool, leasing 6 slots gave the best task latency and
+leasing 8 the best new-task TTFT (more tasks decoding at once slows every
+token); the soft limit runs at 6 and opens the spare slots only to a burst
+that would otherwise keep a new task waiting. Follow-ups are never held back.
+
 Assumes a task's later LLM steps carry its context (true of every workload in
 workload/tasks); a step that starts a new context still returns to the task's
 slot, where the hold bought it nothing.
@@ -84,21 +92,30 @@ def _shared_prefix(a: str, b: str) -> int:
 class LeaseScheduler(Scheduler):
     name = "lease"
 
-    def __init__(self, max_concurrency: int, *, hold_max_s: float = 2.0, **kwargs):
+    def __init__(self, max_concurrency: int, *, hold_max_s: float = 2.0,
+                 soft_limit: int | None = None, overflow_wait_s: float = 2.0, **kwargs):
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         if not math.isfinite(hold_max_s) or hold_max_s < 0:
             raise ValueError("hold_max_s must be finite and >= 0")
+        if soft_limit is not None and not 1 <= soft_limit <= max_concurrency:
+            raise ValueError("soft_limit must be between 1 and max_concurrency")
+        if not math.isfinite(overflow_wait_s) or overflow_wait_s < 0:
+            raise ValueError("overflow_wait_s must be finite and >= 0")
         super().__init__(**kwargs)
         self.max_concurrency = max_concurrency      # slots 0..n-1 of llama-server
         self.hold_max_s = hold_max_s
+        self.soft_limit = soft_limit
+        self.overflow_wait_s = overflow_wait_s
+        self._overflow_timer: Any = None
+        self._soft_waiters: set[int] = set()        # id() of new tasks the soft limit has held back
         self._slots = [_Slot(i) for i in range(max_concurrency)]
         self._wait: dict[tuple[str, int], float] = {}                 # (task type, step) -> usual wait after it
         self._left: dict[str, tuple[float, tuple[str, int]]] = {}     # task -> (when its last step finished, key)
         self._failed: set[Request] = set()
         self._counts = dict.fromkeys(
             ("holds", "given_up_at_once", "followups_kept", "followups_displaced",
-             "live_evictions", "pin_mismatches"), 0)
+             "live_evictions", "pin_mismatches", "soft_held_back", "overflow_admits"), 0)
         self.trace: list[dict[str, Any]] = []       # one row per overwritten live history
 
     # ---- admission -----------------------------------------------------------
@@ -120,6 +137,8 @@ class LeaseScheduler(Scheduler):
         if home is not None:
             return self._assign(head, home, now)
         free = [s for s in self._slots if s.busy is None and not self._held(s, now)]
+        if free and not head.is_followup and self._over_soft_limit(head, now):
+            free = []
         if free:
             # Finished owners first (longest shared prompt prefix, then LRU), so a
             # live task's history is overwritten only when nothing else is free.
@@ -132,6 +151,40 @@ class LeaseScheduler(Scheduler):
             if home is not None:
                 return self._assign(req, home, now)
         return None
+
+    def _over_soft_limit(self, head: Request, now: float) -> bool:
+        """True if the soft limit keeps this new task out for now (it then waits for a slot
+        to come back or for overflow_wait_s to pass)."""
+        if self.soft_limit is None:
+            return False
+        leased = sum(1 for s in self._slots if s.busy is not None or self._held(s, now))
+        if leased < self.soft_limit:
+            return False
+        waited = now - head.t_arrive if head.t_arrive is not None else 0.0
+        if waited >= self.overflow_wait_s:
+            self._counts["overflow_admits"] += 1
+            self._soft_waiters.discard(id(head))
+            return False
+        if id(head) not in self._soft_waiters:
+            self._soft_waiters.add(id(head))
+            self._counts["soft_held_back"] += 1
+        self._wake_at_overflow(self.overflow_wait_s - waited)
+        return True
+
+    def _wake_at_overflow(self, delay: float) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return      # no loop: the head is re-checked at the next arrival or completion
+        if self._overflow_timer is not None and not self._overflow_timer.cancelled():
+            if self._overflow_timer.when() <= loop.time() + delay:
+                return
+            self._overflow_timer.cancel()
+        self._overflow_timer = loop.call_later(delay, self._overflow_due)
+
+    def _overflow_due(self) -> None:
+        self._overflow_timer = None
+        self._dispatch()
 
     def _assign(self, req: Request, slot: _Slot, now: float) -> Request:
         kept = slot.owner == req.task_id
@@ -206,7 +259,8 @@ class LeaseScheduler(Scheduler):
     # ---- reporting -----------------------------------------------------------
 
     def config(self) -> dict:
-        return {**super().config(), "max_concurrency": self.max_concurrency, "hold_max_s": self.hold_max_s}
+        return {**super().config(), "max_concurrency": self.max_concurrency, "hold_max_s": self.hold_max_s,
+                "soft_limit": self.soft_limit, "overflow_wait_s": self.overflow_wait_s}
 
     def summary(self) -> dict:
         return {
