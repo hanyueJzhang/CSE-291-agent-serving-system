@@ -50,6 +50,16 @@ leasing 8 the best new-task TTFT (more tasks decoding at once slows every
 token); the soft limit runs at 6 and opens the spare slots only to a burst
 that would otherwise keep a new task waiting. Follow-ups are never held back.
 
+Decode limit (optional, decode_limit < max_concurrency): new tasks are admitted
+only while fewer than decode_limit slots are busy. Held slots do not count, so
+a new task need not wait for a task that is out at a tool; the number of
+requests decoding at once stays near decode_limit (a follow-up always returns
+to its slot). With kv_budget_tokens, a new task is also admitted only while
+the estimated peak contexts of all live tasks plus its own fit the budget
+(the KV pool's size), so more leases than the pool can hold never start: on
+the 8-slot pool, leasing 8 at 1.15X filled it and requests failed with
+"context size has been exceeded".
+
 Assumes a task's later LLM steps carry its context (true of every workload in
 workload/tasks); a step that starts a new context still returns to the task's
 slot, where the hold bought it nothing.
@@ -75,6 +85,7 @@ class _Slot:
     live: bool = False                   # owner has LLM steps left, so it will want this context again
     hold_until: float | None = None      # idle and reserved for the owner until then
     last_used: float = -1.0
+    peak: int = 0                        # owner's estimated peak context (tokens)
 
 
 def _shared_prefix(a: str, b: str) -> int:
@@ -93,7 +104,8 @@ class LeaseScheduler(Scheduler):
     name = "lease"
 
     def __init__(self, max_concurrency: int, *, hold_max_s: float = 2.0,
-                 soft_limit: int | None = None, overflow_wait_s: float = 2.0, **kwargs):
+                 soft_limit: int | None = None, overflow_wait_s: float = 2.0,
+                 decode_limit: int | None = None, kv_budget_tokens: int | None = None, **kwargs):
         if max_concurrency < 1:
             raise ValueError("max_concurrency must be >= 1")
         if not math.isfinite(hold_max_s) or hold_max_s < 0:
@@ -102,20 +114,28 @@ class LeaseScheduler(Scheduler):
             raise ValueError("soft_limit must be between 1 and max_concurrency")
         if not math.isfinite(overflow_wait_s) or overflow_wait_s < 0:
             raise ValueError("overflow_wait_s must be finite and >= 0")
+        if decode_limit is not None and not 1 <= decode_limit <= max_concurrency:
+            raise ValueError("decode_limit must be between 1 and max_concurrency")
+        if kv_budget_tokens is not None and kv_budget_tokens < 1:
+            raise ValueError("kv_budget_tokens must be >= 1")
         super().__init__(**kwargs)
         self.max_concurrency = max_concurrency      # slots 0..n-1 of llama-server
         self.hold_max_s = hold_max_s
         self.soft_limit = soft_limit
         self.overflow_wait_s = overflow_wait_s
+        self.decode_limit = decode_limit
+        self.kv_budget_tokens = kv_budget_tokens
         self._overflow_timer: Any = None
         self._soft_waiters: set[int] = set()        # id() of new tasks the soft limit has held back
+        self._held_back_once: set[tuple[str, int]] = set()
         self._slots = [_Slot(i) for i in range(max_concurrency)]
         self._wait: dict[tuple[str, int], float] = {}                 # (task type, step) -> usual wait after it
         self._left: dict[str, tuple[float, tuple[str, int]]] = {}     # task -> (when its last step finished, key)
         self._failed: set[Request] = set()
         self._counts = dict.fromkeys(
             ("holds", "given_up_at_once", "followups_kept", "followups_displaced",
-             "live_evictions", "pin_mismatches", "soft_held_back", "overflow_admits"), 0)
+             "live_evictions", "pin_mismatches", "soft_held_back", "overflow_admits",
+             "decode_held_back", "kv_held_back"), 0)
         self.trace: list[dict[str, Any]] = []       # one row per overwritten live history
 
     # ---- admission -----------------------------------------------------------
@@ -137,7 +157,9 @@ class LeaseScheduler(Scheduler):
         if home is not None:
             return self._assign(head, home, now)
         free = [s for s in self._slots if s.busy is None and not self._held(s, now)]
-        if free and not head.is_followup and self._over_soft_limit(head, now):
+        if free and not head.is_followup and (self._over_soft_limit(head, now)
+                                              or self._over_decode_limit(head)
+                                              or self._over_kv_budget(head)):
             free = []
         if free:
             # Finished owners first (longest shared prompt prefix, then LRU), so a
@@ -171,6 +193,31 @@ class LeaseScheduler(Scheduler):
         self._wake_at_overflow(self.overflow_wait_s - waited)
         return True
 
+    def _count_once(self, counter: str, head: Request) -> None:
+        key = (counter, id(head))
+        if key not in self._held_back_once:
+            self._held_back_once.add(key)
+            self._counts[counter] += 1
+
+    def _over_decode_limit(self, head: Request) -> bool:
+        if self.decode_limit is None:
+            return False
+        if sum(1 for s in self._slots if s.busy is not None) < self.decode_limit:
+            return False
+        self._count_once("decode_held_back", head)
+        return True
+
+    def _over_kv_budget(self, head: Request) -> bool:
+        """True if the live tasks' estimated peak contexts plus this task's would not fit the pool.
+        A finished task's slot keeps its history, but that is evictable and not counted."""
+        if self.kv_budget_tokens is None:
+            return False
+        live = sum(s.peak for s in self._slots if s.live)
+        if live + head.peak_context <= self.kv_budget_tokens:
+            return False
+        self._count_once("kv_held_back", head)
+        return True
+
     def _wake_at_overflow(self, delay: float) -> None:
         try:
             loop = asyncio.get_running_loop()
@@ -198,6 +245,7 @@ class LeaseScheduler(Scheduler):
             if other is not slot and other.owner == req.task_id:
                 other.live, other.hold_until = False, None
         slot.busy, slot.owner, slot.prompt = req, req.task_id, req.task_prompt
+        slot.peak = req.peak_context
         slot.live, slot.hold_until = True, None
         req.slot = slot.idx
         return req
@@ -260,7 +308,8 @@ class LeaseScheduler(Scheduler):
 
     def config(self) -> dict:
         return {**super().config(), "max_concurrency": self.max_concurrency, "hold_max_s": self.hold_max_s,
-                "soft_limit": self.soft_limit, "overflow_wait_s": self.overflow_wait_s}
+                "soft_limit": self.soft_limit, "overflow_wait_s": self.overflow_wait_s,
+                "decode_limit": self.decode_limit, "kv_budget_tokens": self.kv_budget_tokens}
 
     def summary(self) -> dict:
         return {

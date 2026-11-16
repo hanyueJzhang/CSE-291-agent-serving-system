@@ -14,6 +14,11 @@ def first(task_id, more_steps=1, prompt=""):
                    remaining_llm_steps=more_steps, task_prompt=prompt)
 
 
+def first_peak(task_id, peak, more_steps=1):
+    return Request(task_id=task_id, step_idx=0, task_type="agent",
+                   remaining_llm_steps=more_steps, peak_context=peak)
+
+
 def followup(task_id, step_idx=2, more_steps=0):
     return Request(task_id=task_id, step_idx=step_idx, task_type="agent",
                    is_followup=True, remaining_llm_steps=more_steps)
@@ -216,6 +221,39 @@ class LeaseSchedulerTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.1)
         self.assertTrue(t_b.done())
 
+    async def test_decode_limit_ignores_held_slots(self):
+        clock = FakeClock()
+        s = LeaseScheduler(3, decode_limit=2, hold_max_s=2.0, clock=clock)
+        a, b = first("A"), first("B")
+        await s.acquire(a)
+        await s.acquire(b)
+        c = first("C")
+        t_c = asyncio.create_task(s.acquire(c))
+        await settle()
+        self.assertFalse(t_c.done())                # two decoding: the limit binds
+        s.release(a)                                # A goes to its tool; its slot is held
+        await settle()
+        self.assertTrue(t_c.done())                 # one decoding: C takes the third slot
+        self.assertNotEqual(c.slot, a.slot)
+        a1 = followup("A")
+        await asyncio.wait_for(s.acquire(a1), 1)    # a follow-up always returns, even past the limit
+        self.assertEqual(a1.slot, a.slot)
+        self.assertEqual(s.summary()["decode_held_back"], 1)
+
+    async def test_kv_budget_holds_new_task_until_a_task_ends(self):
+        clock = FakeClock()
+        s = LeaseScheduler(3, kv_budget_tokens=10_000, hold_max_s=2.0, clock=clock)
+        a = first_peak("A", 6000, more_steps=0)
+        await s.acquire(a)
+        b = first_peak("B", 5000)
+        t_b = asyncio.create_task(s.acquire(b))
+        await settle()
+        self.assertFalse(t_b.done())                # 6000 + 5000 > 10000
+        s.release(a)                                # A is done: its history no longer counts
+        await settle()
+        self.assertTrue(t_b.done())
+        self.assertEqual(s.summary()["kv_held_back"], 1)
+
     def test_soft_limit_params_are_checked(self):
         with self.assertRaises(ValueError):
             LeaseScheduler(2, soft_limit=3)
@@ -223,12 +261,17 @@ class LeaseSchedulerTests(unittest.IsolatedAsyncioTestCase):
             LeaseScheduler(2, soft_limit=0)
         with self.assertRaises(ValueError):
             LeaseScheduler(2, soft_limit=1, overflow_wait_s=-1)
+        with self.assertRaises(ValueError):
+            LeaseScheduler(2, decode_limit=3)
+        with self.assertRaises(ValueError):
+            LeaseScheduler(2, kv_budget_tokens=0)
 
     def test_config_and_registry(self):
         s = make_scheduler("lease", max_concurrency=4, hold_max_s=3.5)
         self.assertIsInstance(s, LeaseScheduler)
         self.assertEqual(s.config(), {"name": "lease", "max_concurrency": 4, "hold_max_s": 3.5,
-                                      "soft_limit": None, "overflow_wait_s": 2.0})
+                                      "soft_limit": None, "overflow_wait_s": 2.0,
+                                      "decode_limit": None, "kv_budget_tokens": None})
         for bad in (dict(max_concurrency=0), dict(max_concurrency=2, hold_max_s=-1),
                     dict(max_concurrency=2, hold_max_s=float("inf"))):
             with self.subTest(bad), self.assertRaises(ValueError):
