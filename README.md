@@ -134,6 +134,8 @@ python -m scripts.sweep scripts/sweeps/phase2_lease_kvu.json     # leases on an 
 python -m scripts.sweep scripts/sweeps/phase2_lease_soft.json    # 8-slot pool, lease up to 8 but new tasks past 6 only after a 2 s wait, 12 runs, ~3 h
 python -m scripts.sweep scripts/sweeps/phase2_lease_stress.json  # the lease configs at 1.15X overload, 12 runs, ~3.5 h
 python -m scripts.sweep scripts/sweeps/phase2_lease_dec_quick.json  # screen: 8-slot pool, new tasks only while < 6 decode + KV budget, seed 42, 4 runs, ~1.2 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_dec.json        # decode limit vs lease c6 vs main line, 3 seeds, 0.95X, 9 runs, ~2.7 h
+python -m scripts.sweep scripts/sweeps/phase2_lease_dec_stress.json # the same at 1.15X, 9 runs, ~2.8 h
 ```
 
 Compare commands are in each plan's `_comment`.
