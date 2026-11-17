@@ -1,5 +1,5 @@
 {
-  "_comment": "Server-side screen on top of dec6 (lease, 8 slots on the shared pool, at most 6 new-task decodes, KV budget 24,576). Same scheduler args in every run; only llama-server flags change. Why: on lease_kvu8_c6 0.95X/1.15X seed 42, 18-21% of decode time overlaps another slot's prompt prefill, and each overlapped second costs ~0.76 s (analysis.prefill_stall), mostly first-step prompts (median ~1.6K tokens) processed in one 2,048-token batch. dec6_b512 / dec6_b256 cap the tokens per server step (-b/-ub) so decoding slots get a token after every 512 / 256 prompt tokens (chunked prefill); expect less decode stall, somewhat slower prefill and TTFT. dec6_q8 stores K and V as q8_0 (flash attention forced on, which auto already picks on the 3080): decode reads about half the KV bytes per token; the pool size (CTX 24,576) is kept the same so only the speed changes. Seed 42 at 0.95X and 1.15X, 8 runs, ~2.4 h. A screen, not a result. Compare with: python -m analysis.paired results/phase2_srv_quick --baseline lease_kvu8_dec6; and python -m analysis.prefill_stall on each run.",
+  "_comment": "Server-side screen on top of dec6 (lease, 8 slots on the shared pool, at most 6 new-task decodes, KV budget 24,576). Same scheduler args in every run; only llama-server flags change. Why: on lease_kvu8_c6 0.95X/1.15X seed 42, 18-21% of decode time overlaps another slot's prompt prefill, and each overlapped second costs ~0.76 s (analysis.prefill_stall), mostly first-step prompts (median ~1.6K tokens) processed in one 2,048-token batch. dec6_b512 / dec6_b256 cap the tokens per server step (-b/-ub) so decoding slots get a token after every 512 / 256 prompt tokens (chunked prefill); expect less decode stall, somewhat slower prefill and TTFT. dec6_q8 stores K and V as q8_0 (flash attention forced on, which auto already picks on the 3080): decode reads about half the KV bytes per token; the pool size (CTX 24,576) is kept the same so only the speed changes. Seed 42 at 0.95X and 1.15X, 8 runs, ~2.4 h. A screen, not a result. Compare with: python -m analysis.paired results/phase2_srv_quick --baseline lease_kvu8_dec6; and python -m analysis.prefill_stall on each run. UPDATE after the seed-42 screen (paired over the two loads, vs dec6): b256 task P50 -4.5%, P95 -6.8%, new-task TTFT P95 -18%, first-step queue -15%, same throughput, same direction at both loads; b512 about a third of that; q8 much worse (P95 +86%, TTFT +200%, tasks/s -3%), dropped. Added: dec6 and b256 at seeds 43-44 and b128 (-b 128 -ub 128) at seeds 42-44, both loads (14 new runs, ~4.2 h). Rerunning the plan skips the 8 finished runs. Compare with: python -m analysis.paired results/phase2_srv_quick --baseline lease_kvu8_dec6 --exclude '*_b512_*' '*_q8_*', separately per load by --exclude '*_l115_*' or '*_l95_*'.",
   "name": "phase2_srv_quick",
   "dimensions": {
     "phase": 2,
@@ -285,6 +285,496 @@
         "341",
         "--seed",
         "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b256_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 256 -ub 256"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b256",
+        "policy": "lease_kvu8_dec6_b256"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b256_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 256 -ub 256"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b256",
+        "policy": "lease_kvu8_dec6_b256"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l115_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l115_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b256_l115_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 256 -ub 256"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b256",
+        "policy": "lease_kvu8_dec6_b256"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l115_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_l115_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b256_l115_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 256 -ub 256"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b256",
+        "policy": "lease_kvu8_dec6_b256"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_lease_kvu8_dec6_b128_l115_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128",
+        "policy": "lease_kvu8_dec6_b128"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
       ]
     }
   ]
