@@ -1,0 +1,542 @@
+{
+  "run_id": "w1tool4x_lease_kvu8_dec6_b128_hold6_l95_s42",
+  "status": "done",
+  "started_at": "2026-11-19T23:13:56.584534-08:00",
+  "argv": [
+    "/home/hanyue/CSE-291-agent-serving-system/scripts/run_experiment.py",
+    "--scheduler",
+    "lease",
+    "--concurrency",
+    "8",
+    "--lease-decode-limit",
+    "6",
+    "--lease-kv-budget",
+    "24576",
+    "--hold-max-s",
+    "6",
+    "--workload",
+    "workload/tasks/mooncake_w1_tool4x.json",
+    "--num-tasks",
+    "282",
+    "--seed",
+    "42",
+    "--run-id",
+    "w1tool4x_lease_kvu8_dec6_b128_hold6_l95_s42",
+    "--results-dir",
+    "/home/hanyue/CSE-291-agent-serving-system/results/phase2_tool4x_quick",
+    "--url",
+    "http://localhost:8080",
+    "--dimensions-json",
+    "{\"phase\":2,\"experiment\":\"phase2_tool4x_quick\",\"seed\":42,\"workload_family\":\"mooncake_w1_tool4x\",\"load_pct_x\":95,\"cache_ram_mb\":0,\"concurrency\":\"lease_kvu8_dec6_b128_hold6\",\"policy\":\"lease_kvu8_dec6_b128_hold6\"}"
+  ],
+  "workload_file": "workload/tasks/mooncake_w1_tool4x.json",
+  "workload": {
+    "_comment": "Tool-wait control: same as mooncake_w1 (same selected tasks, prompts, arrivals and outputs) but both tool delays are 4x longer (2-8 s and 4 s), past the lease's 2 s hold. Needs >= 6144 tokens per slot.",
+    "name": "mooncake_w1_tool4x",
+    "seed": 42,
+    "trace": {
+      "path": "workload/traces/toolagent_trace.jsonl",
+      "window_s": [
+        0,
+        900
+      ],
+      "fit_ctx_per_slot": 6144
+    },
+    "arrival": {
+      "process": "trace",
+      "num_tasks": 282
+    },
+    "task_types": [
+      {
+        "type": "mooncake_agent",
+        "weight": 1.0,
+        "steps": [
+          {
+            "kind": "llm",
+            "from_trace": true
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "uniform",
+              "min": 2.0,
+              "max": 8.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 128,
+            "carry_context": true
+          },
+          {
+            "kind": "tool",
+            "delay_s": {
+              "dist": "fixed",
+              "value": 4.0
+            }
+          },
+          {
+            "kind": "llm",
+            "append_tokens": 300,
+            "max_output_tokens": 256,
+            "carry_context": true
+          }
+        ]
+      }
+    ]
+  },
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_tool4x_quick",
+    "seed": 42,
+    "workload_family": "mooncake_w1_tool4x",
+    "load_pct_x": 95,
+    "cache_ram_mb": 0,
+    "concurrency": "lease_kvu8_dec6_b128_hold6",
+    "policy": "lease_kvu8_dec6_b128_hold6"
+  },
+  "num_tasks": 283,
+  "prompt_salt": "[run e572c79e]",
+  "scheduler": {
+    "name": "lease",
+    "max_concurrency": 8,
+    "hold_max_s": 6.0,
+    "soft_limit": null,
+    "overflow_wait_s": 2.0,
+    "decode_limit": 6,
+    "kv_budget_tokens": 24576
+  },
+  "client": {
+    "base_url": "http://localhost:8080",
+    "timeout_s": 300.0,
+    "temperature": 0.0,
+    "seed": 0,
+    "ignore_eos": true,
+    "cache_prompt": true,
+    "report_slot": true
+  },
+  "server": {
+    "url": "http://localhost:8080",
+    "total_slots": 8,
+    "n_ctx_per_slot": 6144,
+    "model_path": "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "build_info": "b11567-972b5fcc1",
+    "endpoint_slots": true,
+    "endpoint_metrics": true,
+    "chat_template_sha256": "93c0e9aa3629bbd7",
+    "slots_n_ctx": [
+      6144,
+      6144,
+      6144,
+      6144,
+      6144,
+      6144,
+      6144,
+      6144
+    ],
+    "cmdline": [
+      "third_party/llama.cpp/build/bin/llama-server",
+      "-m",
+      "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      "-c",
+      "24576",
+      "--parallel",
+      "8",
+      "-ngl",
+      "99",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080",
+      "--metrics",
+      "--cache-ram",
+      "0",
+      "--kv-unified",
+      "--kv-unified-per-slot",
+      "6144",
+      "-b",
+      "128",
+      "-ub",
+      "128"
+    ]
+  },
+  "pinned": {
+    "LLAMA_CPP_REPO": "https://github.com/ggml-org/llama.cpp",
+    "LLAMA_CPP_COMMIT": "972b5fcc19670e597f8de9bf5cacfb85752a5fff",
+    "MODEL_HF_REPO": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+    "MODEL_FILE": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "SERVER_PORT": "${SERVER_PORT:-8080}",
+    "CTX": "${CTX:-8192}",
+    "PARALLEL": "${PARALLEL:-4}",
+    "NGL": "${NGL:-99}",
+    "CACHE_RAM": "${CACHE_RAM:-2048}"
+  },
+  "repo": {
+    "commit": "c16a2da61c05cc4b18842d085d6954292039059b",
+    "branch": "main",
+    "dirty": false
+  },
+  "host": {
+    "hostname": "JamesPC",
+    "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "environment": "date:            2026-11-19T23:13:54-08:00\nrepo_commit:     c16a2da\nos:              Ubuntu 24.04.5 LTS / kernel 6.18.58.1-microsoft-standard-WSL2\nwsl:             yes\ncpu:             AMD Ryzen 7 7700X 8-Core Processor\nram_total:       15 GB\ngpu:             NVIDIA GeForce RTX 3080, 10240 MiB, 617.42\ncuda_toolkit:    release 13.3\npython:          Python 3.12.3\nllama_cpp:       972b5fcc1 (pinned: 972b5fcc19670e597f8de9bf5cacfb85752a5fff)\nmodel:           Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf sha256=7b064f5842bf9532\nserver_defaults: CTX=8192 PARALLEL=4 NGL=99",
+  "sample_interval_s": 0.5,
+  "warmup_requests": 1,
+  "warnings": [],
+  "admission": {
+    "max_context": 5836,
+    "context_margin": 0.95,
+    "n_ctx_per_slot": 6144
+  },
+  "scheduler_summary": {
+    "holds": 547,
+    "given_up_at_once": 19,
+    "followups_kept": 525,
+    "followups_displaced": 41,
+    "live_evictions": 41,
+    "pin_mismatches": 0,
+    "soft_held_back": 0,
+    "overflow_admits": 0,
+    "decode_held_back": 36,
+    "kv_held_back": 39,
+    "usual_wait_s": {
+      "mooncake_agent/0": 4.818,
+      "mooncake_agent/2": 4.001
+    }
+  },
+  "scheduler_trace": [
+    {
+      "t": 157.85473342899786,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-00852",
+      "by": "task-00872",
+      "idle_s": 6.752011019001657
+    },
+    {
+      "t": 158.47053806499753,
+      "event": "evict",
+      "slot": 2,
+      "owner": "task-00871",
+      "by": "task-00852",
+      "idle_s": 7.773996912874281e-06
+    },
+    {
+      "t": 159.94817605299613,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-00872",
+      "by": "task-00907",
+      "idle_s": 0.14683783499640413
+    },
+    {
+      "t": 161.47101178999583,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-00854",
+      "by": "task-00913",
+      "idle_s": 6.472841498994967
+    },
+    {
+      "t": 162.1195354779993,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-00913",
+      "by": "task-00871",
+      "idle_s": 0.5737242620016332
+    },
+    {
+      "t": 162.22165792399755,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-00880",
+      "by": "task-00854",
+      "idle_s": 2.272884164995048
+    },
+    {
+      "t": 174.9491733640025,
+      "event": "evict",
+      "slot": 3,
+      "owner": "task-00891",
+      "by": "task-00959",
+      "idle_s": 6.000984420999885
+    },
+    {
+      "t": 175.26244720500108,
+      "event": "evict",
+      "slot": 2,
+      "owner": "task-00921",
+      "by": "task-00976",
+      "idle_s": 6.000261052002315
+    },
+    {
+      "t": 178.12200583700178,
+      "event": "evict",
+      "slot": 6,
+      "owner": "task-00988",
+      "by": "task-00999",
+      "idle_s": 7.572001777589321e-06
+    },
+    {
+      "t": 179.44167307899625,
+      "event": "evict",
+      "slot": 6,
+      "owner": "task-00999",
+      "by": "task-01007",
+      "idle_s": 0.2482377079941216
+    },
+    {
+      "t": 182.13423285500176,
+      "event": "evict",
+      "slot": 3,
+      "owner": "task-00959",
+      "by": "task-01015",
+      "idle_s": 6.001355690001219
+    },
+    {
+      "t": 182.26495099999738,
+      "event": "evict",
+      "slot": 3,
+      "owner": "task-01015",
+      "by": "task-00891",
+      "idle_s": 8.6759973783046e-06
+    },
+    {
+      "t": 195.6788541040005,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-01043",
+      "by": "task-00999",
+      "idle_s": 6.000077525997767
+    },
+    {
+      "t": 195.7703170320019,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-01017",
+      "by": "task-00959",
+      "idle_s": 6.000457370006188
+    },
+    {
+      "t": 197.85735430399654,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-01083",
+      "by": "task-00988",
+      "idle_s": 7.6669966802001e-06
+    },
+    {
+      "t": 199.54895834899799,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-01096",
+      "by": "task-01015",
+      "idle_s": 8.283997885882854e-06
+    },
+    {
+      "t": 311.0871750369988,
+      "event": "evict",
+      "slot": 6,
+      "owner": "task-01752",
+      "by": "task-01840",
+      "idle_s": 6.000921382998058
+    },
+    {
+      "t": 315.4931071940009,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-01831",
+      "by": "task-01864",
+      "idle_s": 6.483887437003432
+    },
+    {
+      "t": 362.56776709100086,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-01999",
+      "by": "task-02126",
+      "idle_s": 6.000910185000976
+    },
+    {
+      "t": 364.7659062090024,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-02051",
+      "by": "task-02141",
+      "idle_s": 6.001084271003492
+    },
+    {
+      "t": 364.9476272219981,
+      "event": "evict",
+      "slot": 0,
+      "owner": "task-02081",
+      "by": "task-01999",
+      "idle_s": 6.00032757200097
+    },
+    {
+      "t": 365.8975500020024,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-02074",
+      "by": "task-02142",
+      "idle_s": 6.001472774005379
+    },
+    {
+      "t": 367.4505551740003,
+      "event": "evict",
+      "slot": 2,
+      "owner": "task-02146",
+      "by": "task-02081",
+      "idle_s": 7.611000910401344e-06
+    },
+    {
+      "t": 372.46819789800065,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-02141",
+      "by": "task-02051",
+      "idle_s": 6.001645130003453
+    },
+    {
+      "t": 375.80654316699656,
+      "event": "evict",
+      "slot": 3,
+      "owner": "task-02153",
+      "by": "task-02172",
+      "idle_s": 6.464258005995362
+    },
+    {
+      "t": 470.4322252630009,
+      "event": "evict",
+      "slot": 6,
+      "owner": "task-02705",
+      "by": "task-02747",
+      "idle_s": 6.000455424000393
+    },
+    {
+      "t": 471.09949017399776,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-02664",
+      "by": "task-02705",
+      "idle_s": 6.001749978997395
+    },
+    {
+      "t": 695.4460262079956,
+      "event": "evict",
+      "slot": 1,
+      "owner": "task-04118",
+      "by": "task-04162",
+      "idle_s": 6.0013830789976055
+    },
+    {
+      "t": 696.7630336590009,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-04124",
+      "by": "task-04118",
+      "idle_s": 6.943341457001225
+    },
+    {
+      "t": 699.2914448610027,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-04147",
+      "by": "task-04124",
+      "idle_s": 6.000116055001854
+    },
+    {
+      "t": 757.4184452350019,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-04523",
+      "by": "task-04558",
+      "idle_s": 3.765719271003036
+    },
+    {
+      "t": 829.226986392001,
+      "event": "evict",
+      "slot": 3,
+      "owner": "task-04922",
+      "by": "task-05013",
+      "idle_s": 7.4267090979992645
+    },
+    {
+      "t": 832.1726200670018,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-04944",
+      "by": "task-05004",
+      "idle_s": 6.000824741000542
+    },
+    {
+      "t": 832.6563234049972,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-04929",
+      "by": "task-05009",
+      "idle_s": 6.000824065995403
+    },
+    {
+      "t": 839.7035293820009,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-05009",
+      "by": "task-05046",
+      "idle_s": 6.000817293999717
+    },
+    {
+      "t": 855.419816167996,
+      "event": "evict",
+      "slot": 5,
+      "owner": "task-05070",
+      "by": "task-05165",
+      "idle_s": 6.824056286997802
+    },
+    {
+      "t": 855.683107193996,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-05102",
+      "by": "task-05157",
+      "idle_s": 6.027330286997312
+    },
+    {
+      "t": 858.5915375909972,
+      "event": "evict",
+      "slot": 7,
+      "owner": "task-05161",
+      "by": "task-05102",
+      "idle_s": 7.476999599020928e-06
+    },
+    {
+      "t": 861.8936180699966,
+      "event": "evict",
+      "slot": 4,
+      "owner": "task-05157",
+      "by": "task-05199",
+      "idle_s": 6.001501455997641
+    },
+    {
+      "t": 870.7415650100011,
+      "event": "evict",
+      "slot": 0,
+      "owner": "task-05208",
+      "by": "task-05161",
+      "idle_s": 0.6204664309989312
+    },
+    {
+      "t": 905.2900658159997,
+      "event": "evict",
+      "slot": 0,
+      "owner": "task-05328",
+      "by": "task-05401",
+      "idle_s": 6.001012690001517
+    }
+  ],
+  "ended_at": "2026-11-19T23:29:42.107848-08:00",
+  "sampler_notes": []
+}

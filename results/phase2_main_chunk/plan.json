@@ -1,0 +1,185 @@
+{
+  "_comment": "Ablation for chunked prefill: the hand-tuned main line (FIFO, concurrency 6, 5 slots, 4 GiB host cache) with -b 128 -ub 128, seeds 42-44 at 0.95X and 1.15X, 6 runs, ~1.8 h. lease_kvu8_dec6_b128 gave P95 -30% / -53% vs the main line, but -b 128 is a llama-server flag the main line can use too, so this splits the gain into the scheduler's part (dec6_b128 vs main_b128) and the flag's part (main_b128 vs main). Pairs with the main-line runs of phase2_lease_dec / phase2_lease_dec_stress (same seeds, earlier sweep). Compare with: python -m analysis.paired results/phase2_lease_dec results/phase2_srv_quick results/phase2_main_chunk --baseline fifo_c6_p5_cram4g --exclude '*_b512_*' '*_q8_*' '*_l115_*' (1.15X: phase2_lease_dec_stress and --exclude '*_l95_*').",
+  "name": "phase2_main_chunk",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_main_chunk"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l95_s42",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l95_s43",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l95_s44",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l115_s42",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l115_s43",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w1_fifo_c6_p5_cram4g_b128_l115_s44",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096,
+        "EXTRA_ARGS": "-b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w1",
+        "load_pct_x": 115,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g_b128",
+        "policy": "fifo_c6_p5_cram4g_b128"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1.json",
+        "--num-tasks",
+        "341",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}

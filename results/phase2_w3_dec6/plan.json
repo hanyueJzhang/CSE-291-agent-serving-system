@@ -1,0 +1,116 @@
+{
+  "_comment": "Why is new-task TTFT P95 +34% on W3 for lease_kvu8_dec6_b128 vs the main line? First-step prefill is slower (cache hit 34-49% vs 49-61%, prefill P95 ~1.3-1.7 s vs 0.6-0.8 s): either no host cache on the shared pool, or -b 128 stretching each prefill. This runs dec6 without -b 128 on W3 (282 tasks), seeds 42-44, 3 runs, ~50 min. If its TTFT is also ~+34% vs the main line, the cause is the missing host cache; if much better, chunked prefill costs TTFT on W3. Compare with: python -m analysis.paired results/phase2_best_w23 results/phase2_w3_dec6 --baseline fifo_c6_p5_cram4g --exclude 'w2_*'.",
+  "name": "phase2_w3_dec6",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_w3_dec6"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w3_lease_kvu8_dec6_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w3",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w3_lease_kvu8_dec6_l95_s43",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 43,
+        "workload_family": "mooncake_w3",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "43"
+      ]
+    },
+    {
+      "run_id": "w3_lease_kvu8_dec6_l95_s44",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144"
+      },
+      "dimensions": {
+        "seed": 44,
+        "workload_family": "mooncake_w3",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6",
+        "policy": "lease_kvu8_dec6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w3.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "44"
+      ]
+    }
+  ]
+}
