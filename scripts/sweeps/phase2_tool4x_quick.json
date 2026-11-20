@@ -1,0 +1,109 @@
+{
+  "_comment": "Quick screen: how much of the best config's gain is left when tool waits are 4x longer (2-8 s and 4 s, past the 2 s hold), and whether a longer hold (6 s) wins it back. W1 0.95X task set (282 tasks) with mooncake_w1_tool4x, seed 42 only: main line, lease_kvu8_dec6_b128 with hold 2 s and with hold 6 s, back to back. 3 runs, ~1 h. A screen, not a result. Compare with: python -m analysis.paired results/phase2_tool4x_quick --baseline fifo_c6_p5_cram4g; holds and held-back counts in run_config.json scheduler_summary.",
+  "name": "phase2_tool4x_quick",
+  "dimensions": {
+    "phase": 2,
+    "experiment": "phase2_tool4x_quick"
+  },
+  "args": [],
+  "runs": [
+    {
+      "run_id": "w1tool4x_fifo_c6_p5_cram4g_l95_s42",
+      "server": {
+        "CTX": 30720,
+        "PARALLEL": 5,
+        "CACHE_RAM": 4096
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1_tool4x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 4096,
+        "concurrency": "fifo_c6_p5_cram4g",
+        "policy": "fifo_c6_p5_cram4g"
+      },
+      "args": [
+        "--scheduler",
+        "fifo",
+        "--concurrency",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool4x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1tool4x_lease_kvu8_dec6_b128_hold2_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1_tool4x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128_hold2",
+        "policy": "lease_kvu8_dec6_b128_hold2"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "2",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool4x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    },
+    {
+      "run_id": "w1tool4x_lease_kvu8_dec6_b128_hold6_l95_s42",
+      "server": {
+        "CTX": 24576,
+        "PARALLEL": 8,
+        "CACHE_RAM": 0,
+        "EXTRA_ARGS": "--kv-unified --kv-unified-per-slot 6144 -b 128 -ub 128"
+      },
+      "dimensions": {
+        "seed": 42,
+        "workload_family": "mooncake_w1_tool4x",
+        "load_pct_x": 95,
+        "cache_ram_mb": 0,
+        "concurrency": "lease_kvu8_dec6_b128_hold6",
+        "policy": "lease_kvu8_dec6_b128_hold6"
+      },
+      "args": [
+        "--scheduler",
+        "lease",
+        "--concurrency",
+        "8",
+        "--lease-decode-limit",
+        "6",
+        "--lease-kv-budget",
+        "24576",
+        "--hold-max-s",
+        "6",
+        "--workload",
+        "workload/tasks/mooncake_w1_tool4x.json",
+        "--num-tasks",
+        "282",
+        "--seed",
+        "42"
+      ]
+    }
+  ]
+}

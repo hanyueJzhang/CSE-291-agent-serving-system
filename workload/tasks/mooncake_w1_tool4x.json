@@ -1,0 +1,56 @@
+{
+  "_comment": "Tool-wait control: same as mooncake_w1 (same selected tasks, prompts, arrivals and outputs) but both tool delays are 4x longer (2-8 s and 4 s), past the lease's 2 s hold. Needs >= 6144 tokens per slot.",
+  "name": "mooncake_w1_tool4x",
+  "seed": 42,
+  "trace": {
+    "path": "workload/traces/toolagent_trace.jsonl",
+    "window_s": [
+      0,
+      900
+    ],
+    "fit_ctx_per_slot": 6144
+  },
+  "arrival": {
+    "process": "trace",
+    "num_tasks": 550
+  },
+  "task_types": [
+    {
+      "type": "mooncake_agent",
+      "weight": 1.0,
+      "steps": [
+        {
+          "kind": "llm",
+          "from_trace": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "uniform",
+            "min": 2.0,
+            "max": 8.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 128,
+          "carry_context": true
+        },
+        {
+          "kind": "tool",
+          "delay_s": {
+            "dist": "fixed",
+            "value": 4.0
+          }
+        },
+        {
+          "kind": "llm",
+          "append_tokens": 300,
+          "max_output_tokens": 256,
+          "carry_context": true
+        }
+      ]
+    }
+  ]
+}
